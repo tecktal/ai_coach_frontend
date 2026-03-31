@@ -7,9 +7,9 @@ A cross-platform app that enables teachers to record classroom lessons and recei
 ## Screenshots
 
 <!-- Add your screenshots here. You can replace the placeholder paths with your actual screenshots -->
-| Home Screen | Recording Screen | Coaching Feedback |
+| Coaching Feedback | Recording Screen | Home Screen |
 | :---: | :---: | :---: |
-| <img src="screenshot_home.png" width="250"/> | <img src="screenshot_recording.png" width="250"/> | <img src="screenshot_feedback.png" width="250"/> |
+| <img src="./screenshots/photo_2026-03-31_21-30-04.jpg" width="250"/> | <img src="./screenshots/photo_2026-03-31_21-30-05.jpg" width="250"/> | <img src="./screenshots/photo_2026-03-31_21-30-06.jpg" width="250"/> |
 
 ## Features
 *   **Audio Recording**: Record lessons directly in the app with pause/resume functionality.
