@@ -1,0 +1,41 @@
+Analyzing flutter_app...                                        
+
+   info - Don't invoke 'print' in production code - lib\data\services\file_storage_service.dart:67:7 - avoid_print
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_error_screen.dart:34:17 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_error_screen.dart:50:22 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_error_screen.dart:93:31 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_error_screen.dart:112:29 - prefer_const_constructors
+warning - The left operand can't be null, so the right operand is never executed - lib\presentation\screens\analysis\analysis_error_screen.dart:180:53 - dead_null_aware_expression
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_list_screen.dart:112:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_list_screen.dart:119:29 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_screen.dart:267:15 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\analysis\analysis_screen.dart:896:28 - prefer_const_constructors
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\analysis\widgets\sticky_action_card.dart:43:26 - const_eval_method_invocation
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\analysis\widgets\sticky_action_card.dart:81:57 - const_eval_method_invocation
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\chat\chat_screen.dart:107:24 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\chat\chat_screen.dart:234:36 - prefer_const_constructors
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\chat\chat_screen.dart:358:38 - const_eval_method_invocation
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\chat\chat_screen.dart:440:69 - const_eval_method_invocation
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\chat\chat_screen.dart:592:38 - const_eval_method_invocation
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\chat\chat_screen.dart:618:27 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\chat\chats_list_screen.dart:265:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\chat\lesson_selection_sheet.dart:99:36 - prefer_const_constructors
+   info - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\presentation\screens\home\home_screen.dart:2:8 - unnecessary_import
+warning - Unused import: 'widgets/recording_timer.dart' - lib\presentation\screens\home\home_screen.dart:11:8 - unused_import
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\home\home_screen.dart:140:60 - const_eval_method_invocation
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\home\home_screen.dart:145:66 - const_eval_method_invocation
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\home\home_screen.dart:150:68 - const_eval_method_invocation
+warning - The value of the local variable 'isActiveState' isn't used - lib\presentation\screens\home\home_screen.dart:588:16 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\home\home_screen.dart:702:23 - prefer_const_constructors
+warning - The value of the local variable 'hintColor' isn't used - lib\presentation\screens\home\home_screen.dart:723:11 - unused_local_variable
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\home\home_screen.dart:820:32 - prefer_const_constructors
+  error - Methods can't be invoked in constant expressions - lib\presentation\screens\home\home_screen.dart:923:38 - const_eval_method_invocation
+   info - Statements in a for should be enclosed in a block - lib\presentation\screens\home\home_screen.dart:1102:35 - curly_braces_in_flow_control_structures
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\home\widgets\quote_card.dart:42:17 - prefer_const_constructors
+warning - Unused import: '../../../../core/theme/app_theme.dart' - lib\presentation\screens\home\widgets\wave_visualizer.dart:3:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\profile\profile_screen.dart:84:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\profile\profile_screen.dart:100:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\profile\profile_screen.dart:116:35 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\presentation\screens\recording\recordings_list_screen.dart:285:31 - prefer_const_constructors
+  error - Undefined name 'context' - lib\presentation\screens\recording\widgets\lesson_card.dart:35:21 - undefined_identifier
+
