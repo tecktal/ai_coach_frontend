@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../data/providers/chat_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/offline_banner.dart';
 import 'chat_screen.dart';
 
 enum _ChatSortOption { dateNewest, dateOldest, alphabeticalAZ, alphabeticalZA }
@@ -199,6 +200,8 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
             bottom: false,
             child: Column(
               children: [
+                // Offline indicator — slides in when device has no internet
+                const OfflineBanner(),
                 // ── Search & Filters ──────────────────────────────────────
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),

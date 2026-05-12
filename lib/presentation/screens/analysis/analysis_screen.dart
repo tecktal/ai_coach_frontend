@@ -11,6 +11,7 @@ import '../../../data/providers/auth_provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import '../chat/chat_screen.dart';
+import '../../widgets/offline_banner.dart';
 
 // Widgets
 import 'widgets/hero_score.dart';
@@ -148,7 +149,88 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         builder: (context) => ElementDetailScreen(
           elementName: name,
           element: element,
+          analysisId: widget.analysisId,
         ),
+      ),
+    );
+  }
+
+  /// Returns a visible banner when the analysis succeeded but the audio had
+  /// limited content. Returns [SizedBox.shrink] when there is no warning.
+  Widget _buildContentWarningBanner() {
+    if (_analysis == null) return const SizedBox.shrink();
+
+    final cw = _analysis!.timeOnLearning['content_warning'];
+    if (cw == null || cw is! Map) return const SizedBox.shrink();
+
+    final type    = cw['type']    as String? ?? '';
+    final message = cw['message'] as String? ?? '';
+    if (message.isEmpty) return const SizedBox.shrink();
+
+    // Visual style per warning type
+    Color bannerColor;
+    IconData bannerIcon;
+    String bannerTitle;
+    switch (type) {
+      case 'too_short':
+        bannerColor = const Color(0xFFFF6D00); // deep orange
+        bannerIcon  = Icons.timer_off_rounded;
+        bannerTitle = 'Short Recording';
+        break;
+      case 'limited_teaching':
+        bannerColor = const Color(0xFFF9A825); // amber
+        bannerIcon  = Icons.school_outlined;
+        bannerTitle = 'Limited Teaching Activity Detected';
+        break;
+      case 'poor_audio':
+        bannerColor = const Color(0xFFD32F2F); // red
+        bannerIcon  = Icons.mic_off_rounded;
+        bannerTitle = 'Low Audio Quality';
+        break;
+      default:
+        bannerColor = const Color(0xFF1565C0); // blue
+        bannerIcon  = Icons.info_outline_rounded;
+        bannerTitle = 'Analysis Note';
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 350),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: bannerColor.withOpacity(0.12),
+        border: Border(bottom: BorderSide(color: bannerColor.withOpacity(0.4), width: 1)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(bannerIcon, color: bannerColor, size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  bannerTitle,
+                  style: TextStyle(
+                    color: bannerColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  message,
+                  style: TextStyle(
+                    color: bannerColor.withOpacity(0.9),
+                    fontSize: 12,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -183,20 +265,31 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadAnalysis,
-        color: Theme.of(context).primaryColor,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 1. Hero Score (Assuming Widget handles its own theme or we pass colors)
-              HeroScore(
-                score: _analysis!.overallScore ?? 0.0,
-                date: DateFormat('MMMM d, yyyy').format(_analysis!.createdAt),
-                title: _recording?.title ?? 'Untitled Lesson',
-              ),
+      body: Column(
+        children: [
+          // Offline indicator — slides in when no internet (always sticky)
+          const OfflineBanner(),
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadAnalysis,
+              color: Theme.of(context).primaryColor,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Content warning banner scrolls with the page (not sticky)
+                    _buildContentWarningBanner(),
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                    // 1. Hero Score
+                    HeroScore(
+                      score: _analysis!.overallScore ?? 0.0,
+                      date: DateFormat('MMMM d, yyyy').format(_analysis!.createdAt),
+                      title: _recording?.title ?? 'Untitled Lesson',
+                    ),
               const SizedBox(height: 32),
               
               // Audio Player
@@ -238,21 +331,36 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 const SizedBox(height: 32),
               ],
               
-              // 5. Recommendations
+              // 5. Recommendations (up to 3)
               if (_analysis!.recommendations.isNotEmpty) ...[
-                 StickyActionCard(
-                   title: _analysis!.recommendations.first.title,
-                   description: _analysis!.recommendations.first.description,
-                   example: _analysis!.recommendations.first.example,
-                 ),
-                 const SizedBox(height: 32),
+                ..._analysis!.recommendations.take(3).toList().asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final rec = entry.value;
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: i < _analysis!.recommendations.take(3).length - 1 ? 12 : 0),
+                    child: StickyActionCard(
+                      index: i + 1,
+                      title: rec.title,
+                      description: rec.description,
+                      example: rec.example,
+                    ),
+                  );
+                }),
+                const SizedBox(height: 32),
               ],
+
               
               const SizedBox(height: 80), 
-            ],
-          ),
-        ),
-      ),
+                  ],            // closes inner Padding Column children
+                ),              // closes inner Padding Column
+              ),                // closes Padding
+            ],                  // closes outer scroll Column children
+          ),                    // closes outer scroll Column
+        ),                      // closes SingleChildScrollView
+      ),                        // closes RefreshIndicator
+    ),                          // closes Expanded
+        ],                      // closes body Column children
+      ),                        // closes body Column
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           if (_analysis != null) {
@@ -576,11 +684,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 class ElementDetailScreen extends StatefulWidget {
   final String elementName;
   final ElementAnalysis element;
+  final String analysisId;
 
   const ElementDetailScreen({
     super.key,
     required this.elementName,
     required this.element,
+    required this.analysisId,
   });
 
   @override
@@ -700,14 +810,43 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
               ),
               child: Column(
                 children: [
-                  Text(
-                    effectiveScore > 0 ? effectiveScore.toString() : 'N/A',
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: effectiveScore > 0 ? AppTheme.getScoreColor(effectiveScore) : Colors.grey,
-                    ),
-                  ),
+                  effectiveScore > 0
+                      ? Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              effectiveScore >= 3
+                                  ? Icons.check_circle_outline
+                                  : Icons.trending_up,
+                              color: AppTheme.getScoreColor(effectiveScore),
+                              size: 32,
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              effectiveScore >= 4
+                                  ? 'Strong'
+                                  : effectiveScore >= 3
+                                      ? 'Good'
+                                      : effectiveScore >= 2
+                                          ? 'Developing'
+                                          : 'Needs Focus',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
+                                color: AppTheme.getScoreColor(effectiveScore),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        )
+                      : const Text(
+                          'N/A',
+                          style: TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey,
+                          ),
+                        ),
                 ],
               ),
             ),
@@ -760,28 +899,35 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
             ),
             
             const SizedBox(height: 24),
-            
-            // Behavior Chips
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                   _buildChip('All', isDark),
-                   ...sortedKeys.map((key) => _buildChip(key, isDark)),
-                ],
+
+            // Behavior Chips (only show if there are behaviors to filter)
+            if (sortedKeys.isNotEmpty) ...[
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildChip('All', isDark),
+                    ...sortedKeys.map((key) => _buildChip(key, isDark)),
+                  ],
+                ),
               ),
-            ),
-            
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
+            ],
 
-            // Behaviors List
-            if (displayedKeys.isEmpty)
-              const Text('No behaviors found.', style: TextStyle(color: Colors.grey)),
+            // ── Element-level N/A card (no behaviors at all) ───────────────
+            if (displayedKeys.isEmpty) ...[
+              _NotObservedCard(
+                behaviorKey: widget.elementName.toLowerCase().replaceAll(' ', '_'),
+                analysisId: widget.analysisId,
+                rationale: widget.element.rationale,
+              ),
+            ],
 
+            // ── Behavior cards ──────────────────────────────────────────────
             ...displayedKeys.map((key) {
               final behavior = widget.element.behaviors[key]!;
               final sectionId = 'behavior_$key';
-              
+
               return Container(
                 margin: const EdgeInsets.only(bottom: 24),
                 padding: const EdgeInsets.all(20),
@@ -845,59 +991,87 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
                     const SizedBox(height: 16),
                     Divider(height: 1, color: isDark ? Colors.grey[700] : Colors.grey[200]),
                     const SizedBox(height: 16),
-                    
-                    // Evidence Timeline
-                    if (behavior.instancesFound.isNotEmpty)
-                      ...behavior.instancesFound.asMap().entries.map((entry) {
-                        final isLast = entry.key == behavior.instancesFound.length - 1;
-                        return Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+
+                    // Evidence / Not-Observed section
+                    Builder(builder: (_) {
+                      final isNotObserved =
+                          behavior.rating.toUpperCase() == 'N/A' ||
+                          behavior.rating.toUpperCase() == 'NOT OBSERVED' ||
+                          behavior.rating == '0';
+
+                      if (isNotObserved) {
+                        return _NotObservedCard(
+                          behaviorKey: key,
+                          analysisId: widget.analysisId,
+                          rationale: behavior.evidence,
+                        );
+                      }
+
+                      // Normal evidence timeline
+                      if (behavior.instancesFound.isNotEmpty) {
+                        return Column(
                           children: [
-                             Column(
-                               children: [
-                                 Container(
-                                   width: 12,
-                                   height: 12,
-                                   decoration: BoxDecoration(
-                                     color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
-                                     shape: BoxShape.circle,
-                                     border: Border.all(color: Theme.of(context).primaryColor, width: 2),
-                                   ),
-                                 ),
-                                 if (!isLast)
-                                   Container(
-                                     width: 2,
-                                     height: 40,
-                                     color: isDark ? Colors.grey[700] : Colors.grey.shade200,
-                                   ),
-                               ],
-                             ),
-                             const SizedBox(width: 16),
-                             Expanded(
-                               child: Padding(
-                                 padding: const EdgeInsets.only(bottom: 16.0),
-                                 child: Text(
-                                   '"${entry.value}"', 
-                                   style: TextStyle(
-                                     fontStyle: FontStyle.italic, 
-                                     color: isDark ? Colors.grey[300] : AppTheme.textMain,
-                                     height: 1.4,
-                                   ),
-                                 ),
-                               ),
-                             ),
+                            ...behavior.instancesFound.asMap().entries.map((entry) {
+                              final isLast = entry.key == behavior.instancesFound.length - 1;
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Column(
+                                    children: [
+                                      Container(
+                                        width: 12,
+                                        height: 12,
+                                        decoration: BoxDecoration(
+                                          color: Theme.of(context).primaryColor.withValues(alpha: 0.2),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Theme.of(context).primaryColor, width: 2),
+                                        ),
+                                      ),
+                                      if (!isLast)
+                                        Container(
+                                          width: 2,
+                                          height: 40,
+                                          color: isDark ? Colors.grey[700] : Colors.grey.shade200,
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(bottom: 16.0),
+                                      child: Text(
+                                        '"${entry.value}"',
+                                        style: TextStyle(
+                                          fontStyle: FontStyle.italic,
+                                          color: isDark ? Colors.grey[300] : AppTheme.textMain,
+                                          height: 1.4,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
                           ],
                         );
-                      })
-                    else 
-                      Row(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Icon(Icons.format_quote_rounded, color: Colors.grey, size: 20),
-                           const SizedBox(width: 8),
-                           Expanded(child: Text(behavior.evidence, style: const TextStyle(fontStyle: FontStyle.italic, color: Colors.grey))),
-                         ],
-                      ),
+                      }
+
+                      // Fallback: plain evidence quote
+                      return Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.format_quote_rounded, color: Colors.grey, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              behavior.evidence,
+                              style: const TextStyle(
+                                fontStyle: FontStyle.italic, color: Colors.grey),
+                            ),
+                          ),
+                        ],
+                      );
+                    }),
                   ],
                 ),
               );
@@ -936,5 +1110,163 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
     if (r.contains('M')) return AppTheme.warningColor;
     if (r.contains('L')) return AppTheme.errorColor;
     return Colors.grey;
+  }
+}
+
+// ── Static behavior tips lookup ───────────────────────────────────────────────
+// One concrete, actionable tip per TEACH behavior key.
+// Falls back to the AI rationale text if the key isn't found.
+const Map<String, String> _behaviorTips = {
+  'questioning_techniques':
+      'Try open-ended questions like "What would happen if?" or "How did you figure that out?" to push students to reason out loud instead of guessing a single correct answer.',
+  'wait_time':
+      'After asking a question, silently count to 5 before calling on anyone. Research shows this doubles the number of students who volunteer and improves answer quality.',
+  'checks_for_understanding':
+      'Use exit tickets: at the end of class, ask each student to write one thing they learned and one thing still unclear. Review them before the next lesson.',
+  'student_talk_time':
+      'Try a Think-Pair-Share: give students 90 seconds to think alone, 2 minutes to discuss with a partner, then share with the class. This shifts the talking balance.',
+  'feedback_to_students':
+      'Replace "Good job!" with specific feedback: "I noticed you checked your work twice — that\'s exactly what good mathematicians do." Name the behavior, not just the outcome.',
+  'lesson_facilitation':
+      'Start each lesson segment with a clear learning objective written on the board: "By the end of this activity, you will be able to..." Students engage better when they know the goal.',
+  'critical_thinking':
+      'Pose a real-world dilemma related to your topic and ask students to argue both sides before revealing the accepted answer. Controversy activates deeper thinking.',
+  'autonomy_and_student_agency':
+      'Give students a choice of how to demonstrate learning — written, drawn, spoken, or performed. Even small choices significantly increase ownership and motivation.',
+  'perseverance_and_growth_mindset':
+      'When a student is stuck, say "You haven\'t solved it yet" (emphasise yet). Then ask "What have you tried so far?" to scaffold without solving it for them.',
+  'supportive_environment':
+      'Establish a class agreement: mistakes are learning opportunities, not failures. Model it by narrating your own thinking mistakes out loud during demonstrations.',
+  'positive_expectations':
+      'Assign a briefly challenging task to a student you normally wouldn\'t call on, then provide just enough scaffolding for them to succeed. Public success builds belief.',
+  'social_collaborative_learning':
+      'Use a structured group protocol: each member gets a specific role (facilitator, recorder, presenter, timekeeper). Rotating roles ensures everyone participates equally.',
+  'positive_behavioral_expectations':
+      'Set 2-3 specific, positively-worded classroom rules and display them visibly. At the start of each activity, take 30 seconds to remind students which rule applies. Consistent reference is more powerful than correction.',
+  'supportive_learning_environment':
+      'Establish a class agreement: mistakes are learning opportunities, not failures. Model it by narrating your own thinking mistakes out loud during demonstrations.',
+  'socioemotional_skills':
+      'Begin class with a 2-minute check-in: ask students to rate their readiness 1-5. Acknowledging emotional state before academic work improves engagement and trust.',
+  'classroom_culture':
+      'Celebrate one specific student contribution each week. Named recognition builds a culture where effort and risk-taking are valued.',
+  'instruction':
+      'Break your lesson into 10-12 minute segments with a brief active task between each. Short bursts prevent cognitive overload.',
+};
+
+
+// ── _NotObservedCard widget ───────────────────────────────────────────────────
+
+class _NotObservedCard extends StatelessWidget {
+  final String behaviorKey;
+  final String analysisId;
+  final String rationale;
+
+  const _NotObservedCard({
+    required this.behaviorKey,
+    required this.analysisId,
+    required this.rationale,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bool rationaleOk = rationale.isNotEmpty &&
+        !rationale.toLowerCase().contains('not provided') &&
+        !rationale.toLowerCase().contains('n/a') &&
+        !rationale.toLowerCase().contains('no analysis') &&
+        rationale.length > 25;
+    final tip = _behaviorTips[behaviorKey] ??
+        (rationaleOk
+            ? rationale
+            : 'Talk to your AI coach for concrete strategies and classroom examples for this behavior.');
+    final behaviorLabel = behaviorKey.replaceAll('_', ' ');
+    final coachQuestion =
+        'Can you give me concrete examples of how to implement "$behaviorLabel" in my classroom? What does it look like in practice?';
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.visibility_off_outlined, size: 16, color: Colors.grey),
+            const SizedBox(width: 6),
+            Text(
+              'Not observed in this lesson',
+              style: TextStyle(
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                fontSize: 13,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1A2744) : const Color(0xFFEFF4FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isDark ? const Color(0xFF2D4070) : const Color(0xFFBFD0F7),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Text('\u{1F4A1}', style: TextStyle(fontSize: 15)),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Try This',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 13,
+                      color: isDark ? const Color(0xFF93B4F8) : const Color(0xFF3B63CC),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                tip,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.5,
+                  color: isDark ? Colors.grey[300] : const Color(0xFF2C3E6B),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChatScreen(
+                    analysisId: analysisId,
+                    initialMessage: coachQuestion,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
+            label: const Text('Ask the Coach →'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Theme.of(context).primaryColor,
+              side: BorderSide(color: Theme.of(context).primaryColor.withValues(alpha: 0.4)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              textStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }

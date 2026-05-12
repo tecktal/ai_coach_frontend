@@ -1,26 +1,32 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/chat_message.dart';
 import '../services/api_service.dart';
 
 class ChatProvider with ChangeNotifier {
   final ApiService _api = ApiService();
-  
+
   List<ChatMessage> _messages = [];
   String? _currentSessionId;
   bool _isLoading = false;
-  bool _isStreaming = false; // Add specific streaming flag
+  bool _isStreaming = false;
   String? _error;
 
   List<ChatMessage> get messages => _messages;
   bool get isLoading => _isLoading;
-  bool get isStreaming => _isStreaming; // Expose it
+  bool get isStreaming => _isStreaming;
   String? get error => _error;
   String? get currentSessionId => _currentSessionId;
 
   List<dynamic> _sessions = [];
   List<dynamic> get sessions => _sessions;
 
-  // Load all chat sessions
+  static const String _sessionsCacheKey = 'cached_chat_sessions';
+  static const String _messagesPrefix = 'cached_messages_'; // + sessionId
+
+  // ── Sessions ──────────────────────────────────────────────────────────────
+
   Future<void> loadSessions() async {
     _isLoading = true;
     _error = null;
@@ -28,46 +34,50 @@ class ChatProvider with ChangeNotifier {
 
     try {
       _sessions = await _api.getChatSessions();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_sessionsCacheKey, jsonEncode(_sessions));
     } catch (e) {
       _error = e.toString();
+      if (_sessions.isEmpty) {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final raw = prefs.getString(_sessionsCacheKey);
+          if (raw != null) {
+            _sessions = jsonDecode(raw) as List<dynamic>;
+          }
+        } catch (_) {}
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // Initialize a chat session
   Future<void> initSession(String? analysisId) async {
-    // Clear old messages immediately to prevent flash of previous chat
     _messages = [];
     _isLoading = true;
     _error = null;
     notifyListeners();
 
     try {
-
-      
-      // First, load existing sessions to check for duplicates
       if (analysisId != null) {
-        await loadSessions(); // Load sessions first
-        
+        await loadSessions();
+
         final existingSession = _sessions.firstWhere(
           (s) => s['analysis_id'] == analysisId,
           orElse: () => null,
         );
-        
+
         if (existingSession != null) {
-          // Load the existing session instead of creating a new one
+          final sessionId = existingSession['id'] as String;
+          await loadChatSession(sessionId);
           return;
         }
       }
-      
-      // No existing session, create a new one
-      final data = await _api.createChatSession(analysisId);
 
+      final data = await _api.createChatSession(analysisId);
       _currentSessionId = data['id'];
-      
-      // Load initial messages if any (restore history)
+
       if (data['messages'] != null) {
         _messages = (data['messages'] as List)
             .map((m) => ChatMessage.fromJson(m))
@@ -76,7 +86,6 @@ class ChatProvider with ChangeNotifier {
         _messages = [];
       }
     } catch (e) {
-
       _error = e.toString();
     } finally {
       _isLoading = false;
@@ -84,9 +93,7 @@ class ChatProvider with ChangeNotifier {
     }
   }
 
-  // Load an existing session
   Future<void> loadChatSession(String sessionId) async {
-    // Clear old messages immediately to prevent flash of previous chat
     _messages = [];
     _isLoading = true;
     _error = null;
@@ -96,7 +103,7 @@ class ChatProvider with ChangeNotifier {
     try {
       final data = await _api.getChatSession(sessionId);
       _currentSessionId = data['session']['id'];
-      
+
       if (data['messages'] != null) {
         _messages = (data['messages'] as List)
             .map((m) => ChatMessage.fromJson(m))
@@ -104,71 +111,123 @@ class ChatProvider with ChangeNotifier {
       } else {
         _messages = [];
       }
+      await _cacheMessages(sessionId);
     } catch (e) {
       _error = e.toString();
+      final restored = await _restoreMessages(sessionId);
+      if (restored.isNotEmpty) {
+        _messages = restored;
+        _error = null;
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
+
+  // ── Message cache helpers ─────────────────────────────────────────────────
+
+  Future<void> _cacheMessages(String sessionId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final encoded = jsonEncode(_messages.map((m) => m.toJson()).toList());
+      await prefs.setString('$_messagesPrefix$sessionId', encoded);
+    } catch (_) {}
+  }
+
+  Future<List<ChatMessage>> _restoreMessages(String sessionId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_messagesPrefix$sessionId');
+      if (raw != null) {
+        final List decoded = jsonDecode(raw);
+        return decoded
+            .map((m) => ChatMessage.fromJson(m as Map<String, dynamic>))
+            .toList();
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  // ── Send message ──────────────────────────────────────────────────────────
 
   Future<void> sendMessage(String content) async {
     if (_currentSessionId == null) return;
 
-    // Optimistically add user message
-    final tempId = DateTime.now().toString();
-    final userMsg = ChatMessage(
-      id: tempId,
+    // Add user message immediately so it appears in the chat.
+    _messages.add(ChatMessage(
+      id: DateTime.now().toString(),
       content: content,
       role: 'user',
       createdAt: DateTime.now(),
-    );
-    _messages.add(userMsg);
-    
-    // Add placeholder assistant message
-    final aiTempId = 'ai_${DateTime.now().millisecondsSinceEpoch}';
-    final aiMsg = ChatMessage(
-      id: aiTempId,
-      content: '', // Start empty
-      role: 'assistant',
-      createdAt: DateTime.now(),
-    );
-    _messages.add(aiMsg);
-    
+    ));
+
     _isLoading = true;
-    _isStreaming = true; // Set streaming flag
-    notifyListeners();
+    _isStreaming = true;
+    notifyListeners(); // Shows user message + typing indicator; no AI bubble yet.
+
+    final aiTempId = 'ai_${DateTime.now().millisecondsSinceEpoch}';
+    String fullContent = '';
 
     try {
       final stream = _api.streamChatResponse(_currentSessionId!, content);
-      
-      String fullContent = '';
-      
+
+      // Buffer silently — no per-chunk notifyListeners().
+      //
+      // Previously, MarkdownBody was re-rendered on every SSE chunk. Because
+      // chunks arrive mid-sentence, mid-list, and mid-header, the markdown
+      // parser produced broken visuals (split bold, unclosed lists, truncated
+      // headers) that only resolved once the full text was received.
+      //
+      // Now we buffer the entire response and render it once on completion.
+      // The _TypingIndicator widget stays visible for the full duration.
       await for (final chunk in stream) {
+        if (chunk.trim() == '[DONE]' || chunk.trim().isEmpty) continue;
         fullContent += chunk;
-        
-        // Update the last message (assistant)
-        final index = _messages.indexWhere((m) => m.id == aiTempId);
-        if (index != -1) {
-          _messages[index] = ChatMessage(
-            id: aiTempId,
-            content: fullContent,
-            role: 'assistant',
-            createdAt: DateTime.now(),
-          );
-          notifyListeners();
-        }
+      }
+
+      // ── DIAGNOSTIC: what the provider assembled ──────────────────────────
+      debugPrint('[Chat] Stream complete. fullContent length=${fullContent.length}');
+      if (fullContent.isNotEmpty) {
+        debugPrint('[Chat] FIRST 100: ${fullContent.substring(0, fullContent.length.clamp(0, 100))}');
+        debugPrint('[Chat]  LAST 100: ${fullContent.substring((fullContent.length - 100).clamp(0, fullContent.length))}');
+      }
+
+      // Stream complete — add the finished, fully-formatted AI message at once.
+      if (fullContent.isNotEmpty) {
+        _messages.add(ChatMessage(
+          id: aiTempId,
+          content: fullContent,
+          role: 'assistant',
+          createdAt: DateTime.now(),
+        ));
       }
     } catch (e) {
       _error = e.toString();
-      // Remove the partial message if failed? Or keep partial?
-      // For now keep partial or show error
+
+      // If we received partial content before the error, keep it with a notice.
+      // If nothing arrived, add a clean error message.
+      final errorContent = fullContent.isNotEmpty
+          ? '$fullContent\n\n_[Response interrupted. Please try again.]_'
+          : '_[Could not complete the response. Please try again.]_';
+
+      _messages.add(ChatMessage(
+        id: aiTempId,
+        content: errorContent,
+        role: 'assistant',
+        createdAt: DateTime.now(),
+      ));
     } finally {
       _isLoading = false;
-      _isStreaming = false; // Reset streaming flag
-      notifyListeners();
+      _isStreaming = false;
+      if (_currentSessionId != null) {
+        await _cacheMessages(_currentSessionId!);
+      }
+      notifyListeners(); // One render: typing indicator out, full response in.
     }
   }
+
+  // ── Delete session ────────────────────────────────────────────────────────
 
   Future<void> deleteSession(String sessionId) async {
     try {
@@ -183,5 +242,21 @@ class ChatProvider with ChangeNotifier {
       _error = e.toString();
       notifyListeners();
     }
+  }
+
+  // ── Logout ────────────────────────────────────────────────────────────────
+
+  /// Resets all in-memory chat state on logout.
+  /// SharedPreferences is wiped by LocalStorageService.clearAll().
+  /// Call this before navigating to the login screen so the old user's
+  /// sessions never flash on screen for the next user.
+  void clearUserData() {
+    _sessions = [];
+    _messages = [];
+    _currentSessionId = null;
+    _isLoading = false;
+    _isStreaming = false;
+    _error = null;
+    notifyListeners();
   }
 }

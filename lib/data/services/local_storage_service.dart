@@ -26,15 +26,36 @@ class LocalStorageService {
     final prefs = await SharedPreferences.getInstance();
     final userJson = prefs.getString(_userKey);
     if (userJson != null) {
-      return User.fromJson(jsonDecode(userJson));
+      try {
+        return User.fromJson(jsonDecode(userJson));
+      } catch (_) {
+        // Cache is corrupted (e.g. missing fields from old app version).
+        // Clear it so loadUser() falls through to the network fetch.
+        await prefs.remove(_userKey);
+        return null;
+      }
     }
     return null;
   }
 
+  /// Wipes ALL user-scoped data from SharedPreferences on logout.
+  /// Device-level prefs (dark mode, onboarding) are intentionally preserved.
   Future<void> clearAll() async {
     final prefs = await SharedPreferences.getInstance();
+    final allKeys = prefs.getKeys();
+    for (final key in allKeys) {
+      // Preserve device-level settings that are not tied to any user account.
+      if (key == _onboardingKey) continue;
+      if (key == 'is_dark_mode') continue;
+      await prefs.remove(key);
+    }
+  }
+
+  /// Removes only the auth token, preserving cached user data.
+  /// Used by the Dio interceptor on 401 — full logout is handled by AuthProvider.
+  Future<void> removeToken() async {
+    final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
-    await prefs.remove(_userKey);
   }
 
   Future<bool> hasToken() async {

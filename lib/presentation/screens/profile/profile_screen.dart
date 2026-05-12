@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/chat_provider.dart';
+import '../../../data/providers/recording_provider.dart';
 import '../../../data/providers/theme_provider.dart';
 import '../../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/verification_banner.dart';
 import '../../widgets/country_dropdown.dart';
+import '../../widgets/offline_banner.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -183,6 +186,234 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  void _showChangePasswordSheet(BuildContext context) {
+    final isDark = context.read<ThemeProvider>().isDark;
+    final currentCtrl = TextEditingController();
+    final newCtrl = TextEditingController();
+    final confirmCtrl = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool showCurrent = false;
+    bool showNew = false;
+    bool showConfirm = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
+              // Lifts the sheet above the keyboard
+              padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius:
+                      const BorderRadius.vertical(top: Radius.circular(24)),
+                ),
+                // SingleChildScrollView prevents the 92px overflow when
+                // keyboard opens and the sheet content is taller than available space
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                  child: Form(
+                    key: formKey,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Handle bar
+                        Center(
+                          child: Container(
+                            width: 40,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey[600]
+                                  : Colors.grey[300],
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Change Password',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : AppTheme.textMain,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Your new password must be at least 6 characters.',
+                          style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? Colors.white54
+                                  : AppTheme.textSub),
+                        ),
+                        const SizedBox(height: 20),
+
+                        // Current password
+                        TextFormField(
+                          controller: currentCtrl,
+                          obscureText: !showCurrent,
+                          decoration: InputDecoration(
+                            labelText: 'Current Password',
+                            prefixIcon:
+                                const Icon(Icons.lock_outline_rounded),
+                            suffixIcon: IconButton(
+                              icon: Icon(showCurrent
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined),
+                              onPressed: () => setSheetState(
+                                  () => showCurrent = !showCurrent),
+                            ),
+                            filled: true,
+                            fillColor: isDark
+                                ? const Color(0xFF0F172A)
+                                : Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          validator: (v) => (v == null || v.isEmpty)
+                              ? 'Enter your current password'
+                              : null,
+                        ),
+                        const SizedBox(height: 14),
+
+                        // New password
+                        TextFormField(
+                          controller: newCtrl,
+                          obscureText: !showNew,
+                          decoration: InputDecoration(
+                            labelText: 'New Password',
+                            prefixIcon: const Icon(Icons.lock_reset_rounded),
+                            suffixIcon: IconButton(
+                              icon: Icon(showNew
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined),
+                              onPressed: () =>
+                                  setSheetState(() => showNew = !showNew),
+                            ),
+                            filled: true,
+                            fillColor: isDark
+                                ? const Color(0xFF0F172A)
+                                : Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          validator: (v) {
+                            if (v == null || v.isEmpty) {
+                              return 'Enter a new password';
+                            }
+                            if (v.length < 6) return 'At least 6 characters';
+                            if (v == currentCtrl.text) {
+                              return 'New password must differ from current';
+                            }
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Confirm password
+                        TextFormField(
+                          controller: confirmCtrl,
+                          obscureText: !showConfirm,
+                          decoration: InputDecoration(
+                            labelText: 'Confirm New Password',
+                            prefixIcon:
+                                const Icon(Icons.check_circle_outline),
+                            suffixIcon: IconButton(
+                              icon: Icon(showConfirm
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined),
+                              onPressed: () => setSheetState(
+                                  () => showConfirm = !showConfirm),
+                            ),
+                            filled: true,
+                            fillColor: isDark
+                                ? const Color(0xFF0F172A)
+                                : Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          validator: (v) => v != newCtrl.text
+                              ? 'Passwords do not match'
+                              : null,
+                        ),
+                        const SizedBox(height: 24),
+
+                        Consumer<AuthProvider>(
+                          builder: (ctx, auth, _) => ElevatedButton(
+                            onPressed: auth.isLoading
+                                ? null
+                                : () async {
+                                    if (!formKey.currentState!.validate())
+                                      return;
+                                    final ok = await auth.changePassword(
+                                      currentCtrl.text,
+                                      newCtrl.text,
+                                    );
+                                    if (!sheetCtx.mounted) return;
+                                    Navigator.pop(sheetCtx);
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
+                                        SnackBar(
+                                          content: Text(ok
+                                              ? 'Password changed successfully!'
+                                              : (auth.error ??
+                                                  'Failed to change password')),
+                                          backgroundColor:
+                                              ok ? Colors.green : Colors.red,
+                                          behavior: SnackBarBehavior.floating,
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12)),
+                                        ),
+                                      );
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              padding:
+                                  const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14)),
+                            ),
+                            child: auth.isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white))
+                                : const Text('Update Password',
+                                    style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
@@ -201,7 +432,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Verification banner — only shown when email is not verified
+            // Offline indicator — slides in when no internet
+            const OfflineBanner(),
+            // Email verification nudge
             if (user != null && !user.emailVerified)
               VerificationBanner(user: user),
             Expanded(
@@ -393,6 +626,76 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
 
+                    const SizedBox(height: 16),
+
+                    // Change Password
+                    Container(
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                            color: isDark
+                                ? Colors.transparent
+                                : Colors.grey.shade100),
+                        boxShadow: isDark
+                            ? []
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () => _showChangePasswordSheet(context),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 16),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Theme.of(context)
+                                        .primaryColor
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.password_rounded,
+                                    color: Theme.of(context).primaryColor,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Text(
+                                  'Change Password',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark
+                                        ? Colors.white
+                                        : AppTheme.textMain,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: isDark
+                                      ? Colors.white38
+                                      : Colors.grey.shade400,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 32),
 
                     // Logout Button
@@ -435,6 +738,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           );
 
                           if (confirm == true && context.mounted) {
+                            // Clear all in-memory state so the next account
+                            // never sees this user's data (chat, recordings).
+                            context.read<RecordingProvider>().clearForLogout();
+                            context.read<ChatProvider>().clearUserData();
                             await context.read<AuthProvider>().logout();
                             if (context.mounted) {
                               Navigator.of(context).pushAndRemoveUntil(

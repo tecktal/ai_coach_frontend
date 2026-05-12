@@ -14,8 +14,18 @@ class HeroScore extends StatelessWidget {
     required this.title,
   });
 
+  String _getQualitativeLabel(double score) {
+    if (score >= 4.0) return 'Excellent';
+    if (score >= 3.0) return 'Good';
+    if (score >= 2.0) return 'Developing';
+    return 'Needs Focus';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final label = _getQualitativeLabel(score);
+    final color = AppTheme.getScoreColorDouble(score);
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -49,35 +59,35 @@ class HeroScore extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 24),
+          // Ring shows progress visually but no number inside
           CircularPercentIndicator(
             radius: 80.0,
             lineWidth: 16.0,
             animation: true,
-            percent: score / 5.0,
+            percent: (score / 5.0).clamp(0.0, 1.0),
             center: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  score.toStringAsFixed(1),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 48.0,
-                    color: AppTheme.textMain,
-                  ),
+                Icon(
+                  score >= 3.0 ? Icons.check_circle_outline : Icons.trending_up,
+                  color: color,
+                  size: 28,
                 ),
-                const Text(
-                  'Overall Score',
+                const SizedBox(height: 4),
+                Text(
+                  label,
                   style: TextStyle(
-                    fontWeight: FontWeight.w500,
-                    fontSize: 12.0,
-                    color: AppTheme.textSub,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.0,
+                    color: color,
                   ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ),
             circularStrokeCap: CircularStrokeCap.round,
             backgroundColor: Colors.grey.shade100,
-            progressColor: AppTheme.getScoreColorDouble(score),
+            progressColor: color,
           ),
         ],
       ),

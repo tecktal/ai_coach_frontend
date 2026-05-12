@@ -25,16 +25,18 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'],
-      username: json['username'],
+      id: json['id'] ?? '',
+      username: json['username'] ?? '',
       email: json['email'],
-      firstName: json['first_name'],
-      lastName: json['last_name'],
+      firstName: json['first_name'] ?? '',
+      lastName: json['last_name'] ?? '',
       schoolName: json['school_name'],
       country: json['country'],
       languagePreference: json['language_preference'] ?? 'en',
       emailVerified: json['email_verified'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'])
+          : DateTime.now(),
     );
   }
 
@@ -49,6 +51,7 @@ class User {
       'country': country,
       'language_preference': languagePreference,
       'email_verified': emailVerified,
+      'created_at': createdAt.toIso8601String(), // required for cache restore
     };
   }
 

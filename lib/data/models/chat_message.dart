@@ -15,10 +15,17 @@ class ChatMessage {
     return ChatMessage(
       id: json['id'],
       content: json['content'],
-      role: json['role'] == 'model' ? 'assistant' : json['role'], // Map 'model' to 'assistant' if needed
+      role: json['role'] == 'model' ? 'assistant' : json['role'],
       createdAt: DateTime.parse(json['created_at']),
     );
   }
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'content': content,
+    'role': role,
+    'created_at': createdAt.toIso8601String(),
+  };
 
   bool get isUser => role == 'user';
 }

@@ -2,19 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/recording_provider.dart';
 import '../../../data/providers/analysis_provider.dart';
+import '../../../data/providers/auth_provider.dart';
 import '../../../data/models/analysis.dart';
 import '../../../data/models/recording.dart';
+import '../../../data/services/api_service.dart';
 import '../analysis/analysis_screen.dart';
-import '../analysis/analysis_error_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/app_toast.dart';
+import '../../widgets/offline_banner.dart';
 import 'widgets/lesson_card.dart';
+import 'local_draft_detail_screen.dart';
 
 enum SortOption {
   alphabeticalAZ,
   alphabeticalZA,
   dateNewest,
   dateOldest,
+}
+
+/// Filter for the analysis status tabs in My Lessons.
+enum AnalysisFilter {
+  all,
+  analyzed,
+  notAnalyzed,
 }
 
 class RecordingsListScreen extends StatefulWidget {
@@ -24,10 +34,12 @@ class RecordingsListScreen extends StatefulWidget {
   State<RecordingsListScreen> createState() => _RecordingsListScreenState();
 }
 
-class _RecordingsListScreenState extends State<RecordingsListScreen> with WidgetsBindingObserver {
+class _RecordingsListScreenState extends State<RecordingsListScreen>
+    with WidgetsBindingObserver {
   SortOption _currentSort = SortOption.dateNewest;
   String _searchQuery = '';
   String _selectedCategory = 'All';
+  AnalysisFilter _analysisFilter = AnalysisFilter.all;
 
   @override
   void initState() {
@@ -35,9 +47,10 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
     // Wire up the polling callback ONCE
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = context.read<RecordingProvider>();
+      final userId = context.read<AuthProvider>().user?.id;
       provider.onStatusChanged = _onRecordingStatusChanged;
       provider.startPollingIfNeeded();
-      provider.loadRecordings(silent: true);
+      provider.loadRecordings(silent: true, userId: userId);
     });
     WidgetsBinding.instance.addObserver(this);
   }
@@ -46,8 +59,8 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       if (mounted) {
-        final provider = context.read<RecordingProvider>();
-        provider.loadRecordings(silent: true);
+        final userId = context.read<AuthProvider>().user?.id;
+        context.read<RecordingProvider>().loadRecordings(silent: true, userId: userId);
         context.read<AnalysisProvider>().loadAnalyses();
       }
     }
@@ -72,21 +85,23 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
       context.read<AnalysisProvider>().loadAnalyses();
       AppToast.show(
         context,
-        message: '✅ "${recording.title ?? 'Lesson'}" analysis is ready!',
+        message: '"${recording.title ?? 'Lesson'}" analysis is ready. Tap to view your results.',
         type: ToastType.success,
         duration: const Duration(seconds: 5),
       );
     } else if (recording.isFailed || recording.isInsufficientAudio) {
       AppToast.show(
         context,
-        message: '❌ Analysis failed for "${recording.title ?? 'Lesson'}". Tap to see details.',
+        message:
+            'Analysis could not be completed for "${recording.title ?? 'Lesson'}". Tap to see details.',
         type: ToastType.error,
         duration: const Duration(seconds: 6),
       );
     }
   }
 
-  List<Recording> _sortRecordings(List<Recording> recordings) {
+  List<Recording> _sortRecordings(
+      List<Recording> recordings, Map<String, Analysis> analysisMap) {
     // 1. Filter by Search
     var filtered = recordings.where((r) {
       final title = r.title?.toLowerCase() ?? '';
@@ -95,15 +110,30 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
       return title.contains(query) || subject.contains(query);
     }).toList();
 
-    // 2. Filter by Category
+    // 2. Filter by Category (subject)
     if (_selectedCategory != 'All') {
-      filtered = filtered.where((r) =>
-        (r.subject?.toLowerCase() ?? '').contains(_selectedCategory.toLowerCase())
-      ).toList();
+      filtered = filtered
+          .where((r) => (r.subject?.toLowerCase() ?? '')
+              .contains(_selectedCategory.toLowerCase()))
+          .toList();
     }
 
-    // 3. Sort
-    filtered.sort((a, b) {
+    // 3. Filter by analysis status
+    if (_analysisFilter != AnalysisFilter.all) {
+      filtered = filtered.where((r) {
+        final hasAnalysis =
+            analysisMap.containsKey(r.id) && r.isCompleted && !r.isLocalDraft;
+        return _analysisFilter == AnalysisFilter.analyzed
+            ? hasAnalysis
+            : !hasAnalysis;
+      }).toList();
+    }
+
+    // 4. Sort — local drafts always stay at the top regardless of sort
+    final drafts = filtered.where((r) => r.isLocalDraft).toList();
+    final rest = filtered.where((r) => !r.isLocalDraft).toList();
+
+    rest.sort((a, b) {
       switch (_currentSort) {
         case SortOption.alphabeticalAZ:
           return (a.title ?? '').compareTo(b.title ?? '');
@@ -116,7 +146,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
       }
     });
 
-    return filtered;
+    return [...drafts, ...rest];
   }
 
   void _showSortOptions() {
@@ -138,14 +168,18 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
                 child: Text(
                   'Sort By',
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
               ),
-              _buildSortOption('Alphabetical (A-Z)', Icons.sort_by_alpha, SortOption.alphabeticalAZ),
-              _buildSortOption('Alphabetical (Z-A)', Icons.sort_by_alpha, SortOption.alphabeticalZA),
-              _buildSortOption('Date (Newest First)', Icons.calendar_today, SortOption.dateNewest),
-              _buildSortOption('Date (Oldest First)', Icons.calendar_today, SortOption.dateOldest),
+              _buildSortOption('Alphabetical (A-Z)', Icons.sort_by_alpha,
+                  SortOption.alphabeticalAZ),
+              _buildSortOption('Alphabetical (Z-A)', Icons.sort_by_alpha,
+                  SortOption.alphabeticalZA),
+              _buildSortOption('Date (Newest First)', Icons.calendar_today,
+                  SortOption.dateNewest),
+              _buildSortOption('Date (Oldest First)', Icons.calendar_today,
+                  SortOption.dateOldest),
             ],
           ),
         );
@@ -160,16 +194,21 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
     return ListTile(
       leading: Icon(
         icon,
-        color: isSelected ? Theme.of(context).primaryColor : (isDark ? Colors.grey[400] : Colors.grey),
+        color: isSelected
+            ? Theme.of(context).primaryColor
+            : (isDark ? Colors.grey[400] : Colors.grey),
       ),
       title: Text(
         label,
         style: TextStyle(
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          color: isSelected ? Theme.of(context).primaryColor : (isDark ? Colors.white : AppTheme.textMain),
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : (isDark ? Colors.white : AppTheme.textMain),
         ),
       ),
-      trailing: isSelected ? Icon(Icons.check, color: Theme.of(context).primaryColor) : null,
+      trailing:
+          isSelected ? Icon(Icons.check, color: Theme.of(context).primaryColor) : null,
       onTap: () {
         setState(() => _currentSort = option);
         Navigator.pop(context);
@@ -184,11 +223,22 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
     final analysisProvider = context.watch<AnalysisProvider>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final sortedRecordings = _sortRecordings(recordingProvider.recordings);
-
     final Map<String, Analysis> analysisMap = {
       for (var a in analysisProvider.analyses) a.recordingId: a
     };
+
+    final sortedRecordings =
+        _sortRecordings(recordingProvider.recordings, analysisMap);
+
+    // Count for tab badges
+    final totalAnalyzed = recordingProvider.recordings
+        .where((r) =>
+            !r.isLocalDraft &&
+            r.isCompleted &&
+            analysisMap.containsKey(r.id))
+        .length;
+    final totalNotAnalyzed =
+        recordingProvider.recordings.length - totalAnalyzed;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -196,21 +246,37 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
         title: Text(
           'My Lessons',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : AppTheme.textMain,
-          ),
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : AppTheme.textMain,
+              ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
         actions: [
-          // Show a subtle pulsing dot when polling is active
+          // Subtle pulsing dot when polling is active
           if (recordingProvider.hasProcessingRecordings)
             Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: const EdgeInsets.only(right: 8),
               child: Tooltip(
                 message: 'Analysis in progress…',
                 child: _PollingDot(),
+              ),
+            ),
+          // Uploading drafts indicator
+          if (recordingProvider.isUploadingDrafts)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Tooltip(
+                message: 'Uploading drafts…',
+                child: SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: Theme.of(context).primaryColor,
+                  ),
+                ),
               ),
             ),
         ],
@@ -219,7 +285,10 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
         bottom: false,
         child: Column(
           children: [
-            // Search & Filters
+            // Offline banner
+            const OfflineBanner(),
+
+            // ── Search & Category Filter ──────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Column(
@@ -229,65 +298,101 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E293B) : Colors.white,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: isDark ? Colors.transparent : Colors.grey.shade200),
-                      boxShadow: isDark ? [] : [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.03),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
+                      border: Border.all(
+                          color: isDark
+                              ? Colors.transparent
+                              : Colors.grey.shade200),
+                      boxShadow: isDark
+                          ? []
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                     ),
                     child: TextField(
                       onChanged: (val) => setState(() => _searchQuery = val),
-                      style: TextStyle(color: isDark ? Colors.white : AppTheme.textMain),
+                      style: TextStyle(
+                          color: isDark ? Colors.white : AppTheme.textMain),
                       decoration: InputDecoration(
                         hintText: 'Search lessons...',
-                        hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey.shade400),
-                        prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[500] : Colors.grey.shade400),
+                        hintStyle: TextStyle(
+                            color: isDark
+                                ? Colors.grey[500]
+                                : Colors.grey.shade400),
+                        prefixIcon: Icon(Icons.search,
+                            color: isDark
+                                ? Colors.grey[500]
+                                : Colors.grey.shade400),
                         border: InputBorder.none,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 14),
                       ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  // Filters Row
+
+                  // Category Filter + Sort
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Category Filter
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                          color:
+                              isDark ? const Color(0xFF1E293B) : Colors.white,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey.shade200),
+                          border: Border.all(
+                              color: isDark
+                                  ? Colors.grey[700]!
+                                  : Colors.grey.shade200),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
                             value: _selectedCategory,
                             isDense: true,
-                            dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            icon: Icon(Icons.keyboard_arrow_down, size: 18, color: Theme.of(context).primaryColor),
-                            style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600, fontSize: 13),
-                            items: ['All', 'Math', 'Science', 'English', 'History', 'Art'].map((String value) {
-                              return DropdownMenuItem<String>(value: value, child: Text(value));
+                            dropdownColor: isDark
+                                ? const Color(0xFF1E293B)
+                                : Colors.white,
+                            icon: Icon(Icons.keyboard_arrow_down,
+                                size: 18,
+                                color: Theme.of(context).primaryColor),
+                            style: TextStyle(
+                                color: Theme.of(context).primaryColor,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13),
+                            items: [
+                              'All',
+                              'Math',
+                              'Science',
+                              'English',
+                              'History',
+                              'Art'
+                            ].map((String value) {
+                              return DropdownMenuItem<String>(
+                                  value: value, child: Text(value));
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null) setState(() => _selectedCategory = val);
+                              if (val != null) {
+                                setState(() => _selectedCategory = val);
+                            }
                             },
                           ),
                         ),
                       ),
-                      // Sort Button
                       TextButton.icon(
                         onPressed: _showSortOptions,
-                        icon: Icon(Icons.sort_rounded, size: 18),
+                        icon: const Icon(Icons.sort_rounded, size: 18),
                         label: const Text('Sort'),
                         style: TextButton.styleFrom(
                           foregroundColor: Theme.of(context).primaryColor,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          textStyle: const TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -295,24 +400,72 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+
+            // ── Analysis Filter Tabs ──────────────────────────────────────
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color(0xFF1E293B)
+                      : Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: Row(
+                  children: [
+                    _buildFilterTab(
+                      label: 'All',
+                      count: recordingProvider.recordings.length,
+                      filter: AnalysisFilter.all,
+                      isDark: isDark,
+                    ),
+                    _buildFilterTab(
+                      label: 'Analyzed',
+                      count: totalAnalyzed,
+                      filter: AnalysisFilter.analyzed,
+                      isDark: isDark,
+                    ),
+                    _buildFilterTab(
+                      label: 'Not Analyzed',
+                      count: totalNotAnalyzed,
+                      filter: AnalysisFilter.notAnalyzed,
+                      isDark: isDark,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 16),
 
-            // Lessons List
+            // ── Lessons List ──────────────────────────────────────────────
             Expanded(
               child: recordingProvider.isLoading
-                  ? Center(child: CircularProgressIndicator(color: Theme.of(context).primaryColor))
+                  ? Center(
+                      child: CircularProgressIndicator(
+                          color: Theme.of(context).primaryColor))
                   : sortedRecordings.isEmpty
                       ? Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.mic_none_rounded, size: 80, color: isDark ? Colors.grey[700] : Colors.grey.shade200),
+                              Icon(Icons.mic_none_rounded,
+                                  size: 80,
+                                  color: isDark
+                                      ? Colors.grey[700]
+                                      : Colors.grey.shade200),
                               const SizedBox(height: 16),
                               Text(
                                 'No lessons found',
-                                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  color: isDark ? Colors.grey[500] : Colors.grey.shade400,
-                                ),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .titleLarge
+                                    ?.copyWith(
+                                      color: isDark
+                                          ? Colors.grey[500]
+                                          : Colors.grey.shade400,
+                                    ),
                               ),
                             ],
                           ),
@@ -321,12 +474,15 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
                           color: Theme.of(context).primaryColor,
                           onRefresh: () async {
                             await Future.wait([
-                              context.read<RecordingProvider>().loadRecordings(),
+                              context
+                                  .read<RecordingProvider>()
+                                  .loadRecordings(),
                               context.read<AnalysisProvider>().loadAnalyses(),
                             ]);
                           },
                           child: ListView.builder(
-                            padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 0, 16, 100),
                             itemCount: sortedRecordings.length,
                             itemBuilder: (context, index) {
                               final recording = sortedRecordings[index];
@@ -335,9 +491,13 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
                               return LessonCard(
                                 recording: recording,
                                 score: analysis?.overallScore,
-                                onTap: () => _navigateToAnalysis(context, recording, analysis),
-                                onLongPress: () => _deleteRecording(context, recordingProvider, recording.id),
-                                onDelete: () => _deleteRecording(context, recordingProvider, recording.id),
+                                isUploading: recordingProvider.isDraftUploading(recording.id),
+                                onTap: () => _navigateToAnalysis(
+                                    context, recording, analysis),
+                                onLongPress: () => _deleteRecording(
+                                    context, recordingProvider, recording.id),
+                                onDelete: () => _deleteRecording(
+                                    context, recordingProvider, recording.id),
                               );
                             },
                           ),
@@ -349,21 +509,97 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
     );
   }
 
+  Widget _buildFilterTab({
+    required String label,
+    required int count,
+    required AnalysisFilter filter,
+    required bool isDark,
+  }) {
+    final isSelected = _analysisFilter == filter;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _analysisFilter = filter),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF0F172A) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(9),
+            boxShadow: isSelected && !isDark
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 2),
+                    )
+                  ]
+                : [],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight:
+                      isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected
+                      ? Theme.of(context).primaryColor
+                      : (isDark ? Colors.grey[500] : Colors.grey.shade500),
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                count.toString(),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                      ? Theme.of(context).primaryColor
+                      : (isDark ? Colors.grey[400] : Colors.grey.shade500),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _navigateToAnalysis(
     BuildContext context,
     Recording recording,
     Analysis? analysis,
   ) async {
+    // Local drafts → open the draft detail screen
+    if (recording.isLocalDraft) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => LocalDraftDetailScreen(recording: recording),
+        ),
+      );
+      return;
+    }
+
     if (analysis != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => AnalysisScreen(analysisId: analysis.id)),
+        MaterialPageRoute(
+            builder: (context) => AnalysisScreen(analysisId: analysis.id)),
       );
       return;
     }
 
     if (recording.isCompleted) {
-      AppToast.show(context, message: 'Fetching analysis details…', type: ToastType.info);
+      AppToast.show(context,
+          message: 'Fetching analysis details…', type: ToastType.info);
 
       final provider = context.read<AnalysisProvider>();
       await provider.loadAnalyses();
@@ -377,18 +613,22 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
       if (updatedAnalysis != null) {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) => AnalysisScreen(analysisId: updatedAnalysis.id)),
+          MaterialPageRoute(
+              builder: (context) =>
+                  AnalysisScreen(analysisId: updatedAnalysis.id)),
         );
         return;
       }
     }
 
-    if (recording.isFailed || recording.isInsufficientAudio) {
-      final localPath = context.read<RecordingProvider>().getLocalFilePath(recording.id);
+    // Failed, insufficient-audio, or pending — open lesson detail with retry button
+    if (recording.isFailed || recording.isInsufficientAudio || recording.isPending) {
+      final localPath =
+          context.read<RecordingProvider>().getLocalFilePath(recording.id);
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => AnalysisErrorScreen(
+          builder: (context) => LocalDraftDetailScreen(
             recording: recording,
             localFilePath: localPath,
           ),
@@ -397,10 +637,10 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
       return;
     }
 
-    if (recording.isProcessing || recording.isPending) {
+    if (recording.isProcessing) {
       AppToast.show(
         context,
-        message: 'This lesson is still being analyzed. Please wait.',
+        message: 'This lesson is being analyzed. Please wait.',
         type: ToastType.info,
       );
     } else {
@@ -412,17 +652,22 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
     }
   }
 
-  Future<void> _deleteRecording(BuildContext context, RecordingProvider provider, String id) async {
+  Future<void> _deleteRecording(
+      BuildContext context, RecordingProvider provider, String id) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Recording?'),
-        content: const Text('This will permanently delete the recording and its analysis.'),
+        content: const Text(
+            'This will permanently delete the recording and its analysis.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
+            style:
+                TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
             child: const Text('Delete'),
           ),
         ],
@@ -432,13 +677,61 @@ class _RecordingsListScreenState extends State<RecordingsListScreen> with Widget
     if (confirm == true) {
       await provider.deleteRecording(id);
       if (context.mounted) {
-        AppToast.show(context, message: 'Recording deleted.', type: ToastType.info);
+        AppToast.show(context,
+            message: 'Recording deleted.', type: ToastType.info);
+      }
+    }
+  }
+
+  /// Shows a dialog for a recording stuck at "pending" (uploaded but analysis
+  /// was never triggered) and lets the teacher retry immediately.
+  Future<void> _showRetryAnalysisDialog(
+      BuildContext context, Recording recording) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Analysis not started'),
+        content: const Text(
+            'This lesson was uploaded but the analysis hasn\'t started yet. '
+            'Would you like to trigger it now?'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Run Analysis'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      try {
+        await ApiService().analyzeRecording(recording.id);
+        if (context.mounted) {
+          AppToast.show(
+            context,
+            message: 'Analysis started. Check My Lessons for progress.',
+            type: ToastType.success,
+            duration: const Duration(seconds: 4),
+          );
+          context.read<RecordingProvider>().startPollingIfNeeded();
+        }
+      } catch (e) {
+        if (context.mounted) {
+          AppToast.show(
+            context,
+            message: 'Failed to start analysis. Please try again.',
+            type: ToastType.error,
+          );
+        }
       }
     }
   }
 }
 
-// ── Animated polling indicator dot ───────────────────────────────────────
+// ── Animated polling indicator dot ──────────────────────────────────────────
 class _PollingDot extends StatefulWidget {
   @override
   State<_PollingDot> createState() => _PollingDotState();
@@ -472,7 +765,8 @@ class _PollingDotState extends State<_PollingDot>
         height: 10,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: AppTheme.warningColor.withValues(alpha: 0.4 + _ctrl.value * 0.6),
+          color:
+              AppTheme.warningColor.withValues(alpha: 0.4 + _ctrl.value * 0.6),
         ),
       ),
     );

@@ -162,7 +162,7 @@ class TeachGridWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              // Show average score in collapsed state
+              // Qualitative indicator only — no numeric score shown
               if (hasScore)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -173,19 +173,17 @@ class TeachGridWidget extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        avgScore.toStringAsFixed(1),
-                        style: TextStyle(
-                          color: AppTheme.getScoreColorDouble(avgScore),
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Icon(
+                        avgScore >= 3 ? Icons.check_circle_outline : Icons.info_outline,
+                        color: AppTheme.getScoreColorDouble(avgScore),
+                        size: 16,
                       ),
+                      const SizedBox(width: 6),
                       Text(
-                        '/5',
+                        avgScore >= 3.5 ? 'Strong' : avgScore >= 2.5 ? 'Developing' : 'Needs Focus',
                         style: TextStyle(
                           color: AppTheme.getScoreColorDouble(avgScore),
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           fontSize: 12,
                         ),
                       ),

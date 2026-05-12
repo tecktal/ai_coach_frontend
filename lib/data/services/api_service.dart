@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../core/constants/api_constants.dart';
 import 'local_storage_service.dart';
 
@@ -27,12 +28,10 @@ class ApiService {
         }
         return handler.next(options);
       },
-      onError: (error, handler) async {
-        if (error.response?.statusCode == 401) {
-          await _storage.clearAll();
-        }
-        return handler.next(error);
-      },
+      // NOTE: 401 handling is intentionally NOT done here.
+      // Auto-clearing the token from the interceptor caused silent session wipes
+      // when any API call failed (recordings, analyses, etc.) — even with a valid token.
+      // Logout is handled explicitly by AuthProvider.logout() and clearAll().
     ));
   }
   
@@ -177,8 +176,14 @@ class ApiService {
     return response.data;
   }
 
+  Future<void> changePassword(String currentPassword, String newPassword) async {
+    await _dio.post(
+      '/auth/change-password',
+      data: {'current_password': currentPassword, 'new_password': newPassword},
+    );
+  }
+
   Stream<String> streamChatResponse(String sessionId, String content) async* {
-    
     try {
       final response = await _dio.post(
         '/chat/sessions/$sessionId/stream',
@@ -190,26 +195,88 @@ class ApiService {
           },
         ),
       );
+      final stream = response.data.stream as Stream<List<int>>;
+      int chunkIndex = 0;
+      int totalBytesReceived = 0;
+      int totalDataLinesYielded = 0;
+      final StringBuffer assembledBuffer = StringBuffer();
+      String leftover = '';   // carries incomplete lines across chunk boundaries
+      String? eventData;      // null = no data: lines seen yet for this event
+      String eventName = '';  // current SSE event type (e.g. 'message', 'done')
 
-      final stream = response.data.stream;
       await for (final chunk in stream) {
-        // Decode chunk bytes to string
+        chunkIndex++;
+        totalBytesReceived += chunk.length;
         final String text = String.fromCharCodes(chunk);
 
-        
-        // Parse SSE format
-        // Format is usually "event: message\ndata: <content>\n\n"
-        final lines = text.split('\n');
-        for (final line in lines) {
-          if (line.startsWith('data: ')) {
-            final data = line.substring(6);
-            if (data.isNotEmpty) {
-              yield data;
+        // ── DIAGNOSTIC LOG: raw chunk ──────────────────────────────────────
+        final preview = text.length > 80 ? '${text.substring(0, 80)}...' : text;
+        debugPrint('[SSE] Chunk #$chunkIndex (${chunk.length}B): '
+            '${preview.replaceAll('\n', '\\n').replaceAll('\r', '\\r')}');
+
+        // Combine leftover from previous chunk with new text
+        final combined = leftover + text;
+        leftover = '';
+
+        // Normalise line endings (SSE allows \r\n, \n, or \r)
+        final normalised = combined.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+        final lines = normalised.split('\n');
+
+        // The last element may be an incomplete line — save for next chunk
+        for (int i = 0; i < lines.length - 1; i++) {
+          final line = lines[i];
+
+          if (line.startsWith('event:')) {
+            // Track event type — used to filter out 'done' events below.
+            eventName = line.substring(6).trim();
+          } else if (line.startsWith('data:')) {
+            // Strip 'data:' prefix (5 chars, NO space — Gin doesn't add one).
+            final content = line.substring(5);
+            // Use null-vs-string to distinguish "no data seen" from "empty data".
+            // This lets empty data: lines properly contribute \n separators.
+            eventData = eventData == null ? content : '$eventData\n$content';
+          } else if (line.isEmpty) {
+            // ── Blank line = end of SSE event ─────────────────────────────
+            // Only yield 'message' events — 'done' carries "Stream finished"
+            // which must never appear in chat content.
+            if (eventName == 'message' && eventData != null && eventData.isNotEmpty) {
+              debugPrint('[SSE] Event yielded (${eventData.length}B): '
+                  '${eventData.length > 60 ? eventData.substring(0, 60) : eventData}');
+              assembledBuffer.write(eventData);
+              totalDataLinesYielded++;
+              yield eventData;
             }
+            // Reset for next event
+            eventData = null;
+            eventName = '';
           }
         }
+        leftover = lines.last;
+      }
+
+      // Flush any remaining data after stream ends (no trailing blank line)
+      if (leftover.startsWith('data:')) {
+        final content = leftover.substring(5);
+        eventData = eventData == null ? content : '$eventData\n$content';
+      }
+      if (eventName == 'message' && eventData != null && eventData.isNotEmpty) {
+        debugPrint('[SSE] Final flush (${eventData.length}B): '
+            '${eventData.length > 60 ? eventData.substring(0, 60) : eventData}');
+        assembledBuffer.write(eventData);
+        totalDataLinesYielded++;
+        yield eventData;
+      }
+
+      // ── DIAGNOSTIC SUMMARY ────────────────────────────────────────────────
+      final full = assembledBuffer.toString();
+      debugPrint('[SSE] Stream done. Chunks=$chunkIndex, Bytes=$totalBytesReceived, '
+          'Events=$totalDataLinesYielded, AssembledLen=${full.length}');
+      if (full.isNotEmpty) {
+        debugPrint('[SSE] FIRST 100: ${full.substring(0, full.length.clamp(0, 100))}');
+        debugPrint('[SSE]  LAST 100: ${full.substring((full.length - 100).clamp(0, full.length))}');
       }
     } catch (e) {
+      debugPrint('[SSE] ERROR: $e');
       rethrow;
     }
   }

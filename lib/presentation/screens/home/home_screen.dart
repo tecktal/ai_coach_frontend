@@ -16,11 +16,13 @@ import '../../widgets/app_toast.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/country_customization.dart';
 import '../../widgets/country_dropdown.dart';
+import '../../widgets/offline_banner.dart';
 
 import '../../../data/services/file_storage_service.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/recording_provider.dart';
 import '../../../data/providers/analysis_provider.dart';
+import '../../../data/providers/connectivity_provider.dart';
 
 import '../recording/recordings_list_screen.dart';
 import '../chat/chats_list_screen.dart';
@@ -69,8 +71,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadData() async {
     final recordingProvider = context.read<RecordingProvider>();
     final analysisProvider = context.read<AnalysisProvider>();
+    final userId = context.read<AuthProvider>().user?.id;
     await Future.wait([
-      recordingProvider.loadRecordings(),
+      recordingProvider.loadRecordings(userId: userId),
       analysisProvider.loadAnalyses(),
     ]);
   }
@@ -184,6 +187,9 @@ class _RecordingTabState extends State<_RecordingTab> {
   bool _isPaused = false;
   bool _isLocked = false;
   bool _isProcessing = false;
+  /// Tracks which CTA button is actively running so each shows its own state.
+  bool _savingNow = false;
+  bool _savingLater = false;
 
   // bool _isPlaying = false;
   // Duration _playbackDuration = Duration.zero;
@@ -398,56 +404,141 @@ class _RecordingTabState extends State<_RecordingTab> {
     }
   }
 
-  Future<void> _analyzeRecording() async {
+  /// Saves the recording as a local draft only — no upload, no analysis.
+  /// The teacher can come back and trigger analysis from My Lessons.
+  Future<void> _saveLater() async {
+    if (_isProcessing || _savingLater) return; // double-tap guard
     if (_recordingPath == null) return;
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isProcessing = true);
+    setState(() => _savingLater = true);
+
+    final recordingProvider = context.read<RecordingProvider>();
+    final userId = context.read<AuthProvider>().user?.id ?? '';
 
     try {
-      final recordingProvider = context.read<RecordingProvider>();
-      final analysisProvider = context.read<AnalysisProvider>();
-      
-      final success = await recordingProvider.uploadRecording(
-        _recordingPath!,
-        _titleController.text.trim(),
-        null,
-        _selectedSubject,
-        _gradeController.text.trim(),
-        'en',
-        _duration.inSeconds,
+      await recordingProvider.saveLocalDraft(
+        localFilePath: _recordingPath!,
+        userId: userId,
+        title: _titleController.text.trim(),
+        subject: _selectedSubject,
+        gradeLevel: _gradeController.text.trim(),
+        language: 'en',
+        durationSeconds: _duration.inSeconds,
       );
 
-      if (!success) throw Exception(recordingProvider.error ?? 'Upload failed');
+      if (!mounted) return;
 
-      // Trigger Analysis
-      final recordingId = recordingProvider.recordings.first.id;
-      await analysisProvider.analyzeRecording(recordingId);
+      setState(() {
+        _savingLater = false;
+        _isProcessing = false;
+        _recordingPath = null;
+        _duration = Duration.zero;
+        _isPlaying = false;
+        _playbackPosition = Duration.zero;
+        _playbackDuration = Duration.zero;
+        _titleController.clear();
+        _gradeController.clear();
+      });
+      widget.onRecordingStateChanged?.call(false);
 
-      if (mounted) {
-        setState(() {
-          _isProcessing = false;
-          _recordingPath = null;
-          _duration = Duration.zero;
-          _titleController.clear();
-          _gradeController.clear();
-        });
-        
-        AppToast.show(
-          context,
-          message: 'Analysis started! Check progress in "My Lessons".',
-          type: ToastType.success,
-          duration: const Duration(seconds: 4),
-        );
-      }
+      AppToast.show(
+        context,
+        message: '📱 Lesson saved. Open it in My Lessons to analyse later.',
+        type: ToastType.info,
+        duration: const Duration(seconds: 4),
+      );
     } catch (e) {
       if (mounted) {
-        setState(() => _isProcessing = false);
-        AppToast.show(
-          context,
-          message: 'Failed to upload: $e',
-          type: ToastType.error,
-        );
+        setState(() { _savingLater = false; _isProcessing = false; });
+        AppToast.show(context, message: 'Failed to save: $e', type: ToastType.error);
+      }
+    }
+  }
+
+  /// Saves the recording as a local draft, then immediately uploads and
+  /// triggers AI analysis. The draft is visible in My Lessons right away;
+  /// if the upload fails it stays there so the teacher can retry.
+  Future<void> _saveAndAnalyze() async {
+    if (_isProcessing || _savingNow || _savingLater) return; // double-tap guard
+    if (_recordingPath == null) return;
+    if (!_formKey.currentState!.validate()) return;
+
+    final isOnline = context.read<ConnectivityProvider>().isOnline;
+    if (!isOnline) {
+      // Offer to save for later instead
+      final saveLater = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('No internet connection'),
+          content: const Text(
+            'You need internet to run the analysis.\n\n'
+            'Would you like to save this lesson locally and analyse it later?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Save for Later'),
+            ),
+          ],
+        ),
+      );
+      if (saveLater == true) _saveLater();
+      return;
+    }
+
+    setState(() => _savingNow = true);
+
+    final recordingProvider = context.read<RecordingProvider>();
+    final userId = context.read<AuthProvider>().user?.id ?? '';
+
+    try {
+      // Step 1 — Save as local draft first so it's visible in My Lessons
+      // immediately. If the upload fails the draft stays and the teacher can retry.
+      final draft = await recordingProvider.saveLocalDraft(
+        localFilePath: _recordingPath!,
+        userId: userId,
+        title: _titleController.text.trim(),
+        subject: _selectedSubject,
+        gradeLevel: _gradeController.text.trim(),
+        language: 'en',
+        durationSeconds: _duration.inSeconds,
+      );
+
+      if (!mounted) return;
+
+      // Reset the UI — lesson is now safe in My Lessons as a draft.
+      setState(() {
+        _savingNow = false;
+        _isProcessing = false;
+        _recordingPath = null;
+        _duration = Duration.zero;
+        _isPlaying = false;
+        _playbackPosition = Duration.zero;
+        _playbackDuration = Duration.zero;
+        _titleController.clear();
+        _gradeController.clear();
+      });
+      widget.onRecordingStateChanged?.call(false);
+
+      AppToast.show(
+        context,
+        message: 'Uploading for analysis. Check My Lessons for progress.',
+        type: ToastType.success,
+        duration: const Duration(seconds: 4),
+      );
+
+      // Step 2 — Upload THIS specific draft only and trigger analysis.
+      // On success the draft is replaced by the server recording automatically.
+      recordingProvider.uploadDraft(draft);
+    } catch (e) {
+      if (mounted) {
+        setState(() { _savingNow = false; _isProcessing = false; });
+        AppToast.show(context, message: 'Failed to save lesson: $e', type: ToastType.error);
       }
     }
   }
@@ -624,7 +715,10 @@ class _RecordingTabState extends State<_RecordingTab> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Offline indicator — slides in when device has no internet
+            const OfflineBanner(),
             if (isCustomizedCountry) ...[
+
               const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -727,106 +821,161 @@ class _RecordingTabState extends State<_RecordingTab> {
       child: SafeArea(
         child: Stack(
           children: [
-            // ── Back button ──
-            Positioned(
-              top: 8,
-              left: 8,
-              child: IconButton(
-                icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white70 : AppTheme.textSub),
-                onPressed: _confirmDiscard,
-                tooltip: 'Discard recording',
-              ),
-            ),
-
-            // ── Main content ──
-            Column(
-              children: [
-                const Spacer(flex: 2),
-
-                // Timer
-                Text(
-                  _formatDur(_duration),
-                  style: TextStyle(
-                    fontSize: 72,
-                    fontWeight: FontWeight.w200,
-                    color: textColor,
-                    letterSpacing: 4,
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                // Status indicator
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _isPaused ? Colors.amber : AppTheme.errorColor,
-                        shape: BoxShape.circle,
+            // ── All content absorbed when locked (except the lock toggle below) ──
+            AbsorbPointer(
+              absorbing: _isLocked,
+              child: Column(
+                children: [
+                  // ── Back button — hidden when locked to avoid banner overlap ──
+                  if (!_isLocked)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 8, left: 8),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back_rounded, color: isDark ? Colors.white70 : AppTheme.textSub),
+                          onPressed: _confirmDiscard,
+                          tooltip: 'Discard recording',
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      _isPaused ? 'PAUSED' : 'RECORDING',
-                      style: TextStyle(
-                        color: _isPaused ? Colors.amber : AppTheme.errorColor,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  ],
-                ),
 
-                const Spacer(flex: 1),
-
-                // Wave visualizer
-                WaveVisualizer(isRecording: _isRecording, isPaused: _isPaused),
-
-                const Spacer(flex: 1),
-
-                // Controls row
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Pause / Resume
-                    _RecordingControlBtn(
-                      icon: _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                      size: 64,
-                      isDark: isDark,
-                      onTap: _isPaused ? _resumeRecording : _pauseRecording,
-                    ),
-                    const SizedBox(width: 32),
-                    // Stop
-                    GestureDetector(
-                      onTap: _isLocked ? null : _stopRecording,
+                  // ── Floating lock badge — sits between back btn and timer ──
+                  AnimatedOpacity(
+                    opacity: _isLocked ? 1.0 : 0.0,
+                    duration: const Duration(milliseconds: 220),
+                    child: IgnorePointer(
                       child: Container(
-                        width: 80,
-                        height: 80,
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
-                          color: _isLocked ? Colors.grey : AppTheme.errorColor,
-                          shape: BoxShape.circle,
-                          boxShadow: _isLocked ? [] : [
-                            BoxShadow(
-                              color: AppTheme.errorColor.withValues(alpha: 0.4),
-                              blurRadius: 24,
-                              spreadRadius: 4,
+                          color: Theme.of(context).primaryColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(50),
+                          border: Border.all(
+                            color: Theme.of(context).primaryColor.withValues(alpha: 0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.lock_rounded, size: 13,
+                                color: Theme.of(context).primaryColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Screen locked',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).primaryColor,
+                                letterSpacing: 0.2,
+                              ),
                             ),
                           ],
                         ),
-                        child: Icon(Icons.stop_rounded, color: Colors.white, size: 36),
                       ),
                     ),
-                  ],
-                ),
+                  ),
 
-                const SizedBox(height: 32),
+                  const Spacer(flex: 2),
 
-                // ── Lock toggle ──
-                GestureDetector(
+                  // Timer
+                  Text(
+                    _formatDur(_duration),
+                    style: TextStyle(
+                      fontSize: 72,
+                      fontWeight: FontWeight.w200,
+                      color: textColor,
+                      letterSpacing: 4,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Status indicator
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _isPaused ? Colors.amber : AppTheme.errorColor,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _isPaused ? 'PAUSED' : 'RECORDING',
+                        style: TextStyle(
+                          color: _isPaused ? Colors.amber : AppTheme.errorColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                          letterSpacing: 2,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Spacer(flex: 1),
+
+                  // Wave visualizer
+                  WaveVisualizer(isRecording: _isRecording, isPaused: _isPaused),
+
+                  const Spacer(flex: 1),
+
+                  // Controls row
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Pause / Resume
+                      _RecordingControlBtn(
+                        icon: _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                        size: 64,
+                        isDark: isDark,
+                        onTap: _isPaused ? _resumeRecording : _pauseRecording,
+                      ),
+                      const SizedBox(width: 32),
+                      // Stop
+                      GestureDetector(
+                        onTap: _stopRecording,
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: _isLocked ? Colors.grey : AppTheme.errorColor,
+                            shape: BoxShape.circle,
+                            boxShadow: _isLocked ? [] : [
+                              BoxShadow(
+                                color: AppTheme.errorColor.withValues(alpha: 0.4),
+                                blurRadius: 24,
+                                spreadRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: Icon(Icons.stop_rounded, color: Colors.white, size: 36),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 32),
+
+                  // Spacer placeholder so lock toggle (positioned outside) stays in flow
+                  const SizedBox(height: 56),
+
+                  const Spacer(flex: 1),
+                ],
+              ),
+            ),
+
+            // ── Lock toggle — always interactive, sits on top ──
+            Positioned(
+              bottom: MediaQuery.of(context).size.height * 0.10,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: GestureDetector(
                   onTap: () => setState(() => _isLocked = !_isLocked),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
@@ -864,10 +1013,10 @@ class _RecordingTabState extends State<_RecordingTab> {
                     ),
                   ),
                 ),
-
-                const Spacer(flex: 1),
-              ],
+              ),
             ),
+
+            // (banner replaced by inline pill badge above)
           ],
         ),
       ),
@@ -1024,7 +1173,99 @@ class _RecordingTabState extends State<_RecordingTab> {
               ),
               const SizedBox(height: 32),
 
-              PrimaryButton(text: 'Analyze Lesson', onPressed: _analyzeRecording),
+              // ── Offline notice ──
+              Consumer<ConnectivityProvider>(
+                builder: (_, connectivity, __) {
+                  if (connectivity.isOnline) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.wifi_off_rounded, color: Colors.orange.shade700, size: 20),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'You\'re offline. Use "Save for Later" — you can run analysis when you reconnect.',
+                              style: TextStyle(fontSize: 13, color: Colors.orange.shade900, height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+
+              // ── Save & Analyse Now (primary, animated) ─────────────────────
+              AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _savingLater ? 0.45 : 1.0,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: (_savingNow || _savingLater) ? null : _saveAndAnalyze,
+                    icon: _savingNow
+                        ? const SizedBox(
+                            width: 18, height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.analytics_rounded),
+                    label: Text(_savingNow ? 'Saving & uploading…' : 'Save & Analyse Now'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor:
+                          Theme.of(context).primaryColor.withValues(alpha: _savingNow ? 0.85 : 0.45),
+                      disabledForegroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // ── Save for Later (secondary, animated) ───────────────────────
+              Consumer<ConnectivityProvider>(
+                builder: (_, connectivity, __) => AnimatedOpacity(
+                  duration: const Duration(milliseconds: 200),
+                  opacity: _savingNow ? 0.45 : 1.0,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: (_savingNow || _savingLater) ? null : _saveLater,
+                      icon: _savingLater
+                          ? const SizedBox(
+                              width: 16, height: 16,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Color(0xFF64748B)),
+                            )
+                          : const Icon(Icons.save_outlined),
+                      label: Text(_savingLater ? 'Saving…' : 'Save for Later'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.textSub,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        minimumSize: const Size(double.infinity, 0),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        side: BorderSide(
+                            color: _savingNow
+                                ? Colors.grey.shade200
+                                : Colors.grey.shade300),
+                        textStyle:
+                            const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
               Center(
                 child: TextButton(

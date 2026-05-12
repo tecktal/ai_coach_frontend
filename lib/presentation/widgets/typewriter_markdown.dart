@@ -76,21 +76,26 @@ class _TypewriterMarkdownState extends State<TypewriterMarkdown> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : AppTheme.textMain;
+    final codeBackground = isDark ? Colors.black26 : const Color(0xFFF5F5F5);
+    final strongColor = isDark ? const Color(0xFFB39DDB) : const Color(0xFF6750A4);
+
     return MarkdownBody(
       data: _displayedText,
       styleSheet: MarkdownStyleSheet(
-        p: const TextStyle(color: AppTheme.textMain, fontSize: 16, height: 1.5),
-        strong: const TextStyle(color: Color(0xFF6750A4), fontWeight: FontWeight.bold),
-        h1: const TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold, fontSize: 24),
-        h2: const TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold, fontSize: 20),
-        h3: const TextStyle(color: AppTheme.textMain, fontWeight: FontWeight.bold, fontSize: 18),
-        code: const TextStyle(
-          color: AppTheme.textMain,
-          backgroundColor: Color(0xFFF5F5F5),
+        p: TextStyle(color: textColor, fontSize: 15, height: 1.5),
+        strong: TextStyle(color: strongColor, fontWeight: FontWeight.bold),
+        h1: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 24),
+        h2: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 20),
+        h3: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 18),
+        code: TextStyle(
+          color: textColor,
+          backgroundColor: codeBackground,
           fontFamily: 'monospace',
         ),
         codeblockDecoration: BoxDecoration(
-          color: const Color(0xFFF5F5F5),
+          color: codeBackground,
           borderRadius: BorderRadius.circular(8),
         ),
       ),

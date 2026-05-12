@@ -4,6 +4,7 @@ import '../../../../core/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../../data/models/recording.dart';
 import '../../../data/providers/recording_provider.dart';
+import '../../../data/services/api_service.dart';
 
 class AnalysisErrorScreen extends StatefulWidget {
   final Recording recording;
@@ -21,6 +22,9 @@ class AnalysisErrorScreen extends StatefulWidget {
 
 class _AnalysisErrorScreenState extends State<AnalysisErrorScreen> {
   bool _isRetrying = false;
+  /// Once the teacher has triggered a retry, lock the button permanently
+  /// to prevent multiple concurrent uploads of the same recording.
+  bool _hasRetried = false;
 
   @override
   Widget build(BuildContext context) {
@@ -85,11 +89,11 @@ class _AnalysisErrorScreenState extends State<AnalysisErrorScreen> {
             else
               Column(
                 children: [
-                  if (_canRetry()) ...[
+                  if (_canRetry() && !_hasRetried) ...[
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _handleRetry,
+                        onPressed: (_isRetrying || _hasRetried) ? null : _handleRetry,
                         icon: Icon(Icons.refresh_rounded),
                         label: const Text('Retry Analysis'),
                         style: ElevatedButton.styleFrom(
@@ -137,75 +141,117 @@ class _AnalysisErrorScreenState extends State<AnalysisErrorScreen> {
 
   String _getFriendlyErrorMessage() {
     final reason = widget.recording.failureReason ?? 'unknown';
-    
+
+    // Prefer the raw error message from the backend when it's specific and helpful
+    final rawMessage = widget.recording.errorMessage;
+
     switch (reason) {
+      // ── Duration / length issues ───────────────────────────────────────────
       case 'too_short':
-        return 'The recording is too short. AI Coach needs at least 1 minute of classroom audio to provide meaningful feedback.';
-      case 'insufficient_content':
-        return 'We couldn\'t detect enough clear teaching content in this audio. This might happen if the classroom was too noisy or the teacher\'s voice wasn\'t clear.';
+        return rawMessage?.isNotEmpty == true
+            ? rawMessage!
+            : 'Your recording is too short. Please record at least 30 seconds of classroom activity for a meaningful analysis.';
+
+      // ── File issues ────────────────────────────────────────────────────────
       case 'file_too_small':
-        return 'The audio file appears to be empty or corrupted.';
-      case 'network_error':
-        return 'We had trouble downloading your recording. Please check your internet connection and try again.';
+        return 'The audio file appears to be empty or corrupted. Please try recording again and make sure the recording saved successfully before submitting.';
+
+      case 'file_too_large':
+        return rawMessage?.isNotEmpty == true
+            ? rawMessage!
+            : 'Your recording file is too large. Please use a compressed audio format (M4A or MP3) to reduce the file size and try again.';
+
+      // ── Audio quality issues ───────────────────────────────────────────────
+      case 'poor_audio':
+        return 'No classroom audio was detected in this recording. The microphone may have been blocked or too far from the teaching area. Please try again — place your device closer to where you are teaching.';
+
+      case 'insufficient_content':
+        return 'The AI could not detect enough classroom interaction to complete a full analysis. This can happen if the microphone was far from the action, or if most of the recording captured non-teaching activity. Try recording during an active teaching segment and place the device closer to you.';
+
+      // ── AI / processing issues ─────────────────────────────────────────────
       case 'token_limit_exceeded':
-        return 'The specific analysis required too much detail and exceeded the AI token limit. Please try again with this local recording.';
+        return 'The analysis generated too much detail and exceeded the AI processing limit. This can happen with very long recordings. Please try again — the AI will produce a more concise response.';
+
       case 'ai_service_error':
-        return 'Our AI service is temporarily unavailable. Please try again in a few moments.';
+        return 'The AI analysis service is temporarily unavailable. Please wait a moment and tap "Retry Analysis" below.';
+
+      case 'network_error':
+        return 'We had trouble downloading your recording for analysis. Please check your internet connection and tap "Retry Analysis" below.';
+
+      case 'system_error':
+      case 'storage_error':
+      case 'database_error':
+        return 'A system error occurred while processing your recording. This is not related to your lesson. Please tap "Retry Analysis" — it usually succeeds on the second attempt.';
+
       default:
-        return widget.recording.errorMessage ?? 'An unexpected error occurred during analysis. Please try again.';
+        return rawMessage?.isNotEmpty == true
+            ? rawMessage!
+            : 'An unexpected error occurred during analysis. Please tap "Retry Analysis" below.';
     }
   }
 
   bool _canRetry() {
-    // We can only retry if we have the local file path or if it's a transient server error
-    // For now, checks if local file exists
-    if (widget.localFilePath != null) {
-      return File(widget.localFilePath!).existsSync();
-    }
-    return false; 
+    // We can always retry:
+    // - If local file exists → re-upload fresh
+    // - If not → re-trigger analysis on the audio already on S3
+    return true;
   }
 
   Future<void> _handleRetry() async {
-    if (widget.localFilePath == null) return;
-    
-    setState(() => _isRetrying = true);
-    
+    // One-shot guard — prevents double-tap from creating duplicate recordings.
+    if (_hasRetried || _isRetrying) return;
+    setState(() {
+      _isRetrying = true;
+      _hasRetried = true; // Lock permanently — teacher must go back and try fresh
+    });
+
     try {
       final provider = Provider.of<RecordingProvider>(context, listen: false);
-      
-      final title = widget.recording.title ?? 'Retried Recording';
-      final desc = widget.recording.description;
-      final subject = widget.recording.subject;
-      final grade = widget.recording.gradeLevel;
-      final language = widget.recording.language ?? 'en';
-      final duration = widget.recording.durationSeconds ?? 0;
-      
-      // Delete old failed record first
-      await provider.deleteRecording(widget.recording.id);
-      
-      // Upload anew
-      final success = await provider.uploadRecording(
-        widget.localFilePath!,
-        title,
-        desc,
-        subject,
-        grade,
-        language,
-        duration,
-      );
-      
-      if (success && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Retry successful! Analyzing again.')),
+
+      // Path A: local file exists → delete old (failed) record and re-upload fresh
+      final hasLocalFile = widget.localFilePath != null &&
+          File(widget.localFilePath!).existsSync();
+
+      if (hasLocalFile) {
+        // Delete the failed recording first so it doesn't accumulate
+        await provider.deleteRecording(widget.recording.id);
+
+        final success = await provider.uploadRecording(
+          widget.localFilePath!,
+          widget.recording.title ?? 'Retried Recording',
+          widget.recording.description,
+          widget.recording.subject,
+          widget.recording.gradeLevel,
+          widget.recording.language,
+          widget.recording.durationSeconds ?? 0,
         );
-        Navigator.of(context).pop();
-      } else if (!success) {
-        throw Exception(provider.error ?? 'Upload failed during retry');
+
+        if (!success && mounted) {
+          final errMsg = provider.error;
+          throw Exception(
+            errMsg != null && errMsg.isNotEmpty
+                ? errMsg
+                : 'Upload failed during retry',
+          );
+        }
+      } else {
+        // Path B: audio is already on the server — just re-trigger the analysis
+        await ApiService().analyzeRecording(widget.recording.id);
+        provider.startPollingIfNeeded();
       }
-    } catch (e) {
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Retry failed: $e')),
+          const SnackBar(content: Text('Analysis re-submitted. You will be notified when it is ready.')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Re-enable retry on failure so the teacher can try again
+      if (mounted) setState(() => _hasRetried = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Retry failed. Please try again.')),
         );
       }
     } finally {

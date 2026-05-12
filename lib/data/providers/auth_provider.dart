@@ -150,27 +150,59 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  /// Pure cache-first auth — like WhatsApp.
+  /// If token + cached user exist locally → authenticate instantly, zero network.
+  /// Only makes a network call on the very first boot after login (no cache yet).
+  /// Background refresh is intentionally removed: it was causing silent session
+  /// wipes when the server returned 401 after a redeploy (JWT secret change).
   Future<void> loadUser() async {
     try {
-      if (await _storage.hasToken()) {
-        try {
-          final response = await _api.getMe();
-          _user = User.fromJson(response);
-          await _storage.saveUser(_user!);
-        } catch (e) {
-          // Token invalid, clear and require login
+      final hasToken = await _storage.hasToken();
+      debugPrint('[AUTH] hasToken=$hasToken');
+      if (!hasToken) {
+        _user = null;
+        notifyListeners();
+        return;
+      }
+
+      // ── Fast path: cached user found (works fully offline) ──────────────
+      final cachedUser = await _storage.getUser();
+      debugPrint('[AUTH] cachedUser=${cachedUser?.username}');
+      if (cachedUser != null) {
+        _user = cachedUser;
+        notifyListeners();
+        return;
+      }
+
+      // ── Slow path: no cached user, must go online ───────────────────────
+      debugPrint('[AUTH] No cached user, trying network...');
+      try {
+        final response = await _api.getMe();
+        _user = User.fromJson(response);
+        await _storage.saveUser(_user!);
+        debugPrint('[AUTH] User fetched and cached: ${_user?.username}');
+      } on DioException catch (e) {
+        debugPrint('[AUTH] DioException status=${e.response?.statusCode}');
+        if (_is401(e)) {
           await _storage.clearAll();
           _user = null;
         }
-      } else {
-        _user = null;
+      } catch (e) {
+        debugPrint('[AUTH] Unknown error: $e');
       }
       notifyListeners();
     } catch (e) {
-      debugPrint('Load user error: $e');
+      debugPrint('[AUTH] Outer catch: $e');
       _user = null;
       notifyListeners();
     }
+  }
+
+  bool _is401(dynamic error) {
+    if (error is DioException) {
+      return error.response?.statusCode == 401;
+    }
+    return error.toString().contains('401');
   }
 
   Future<bool> ensureAuthenticated() async {
@@ -185,6 +217,27 @@ class AuthProvider with ChangeNotifier {
     await _storage.clearAll();
     _user = null;
     notifyListeners();
+  }
+
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      await _api.changePassword(currentPassword, newPassword);
+
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = _is401(e)
+          ? 'Current password is incorrect.'
+          : _getErrorMessage(e);
+      _isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
 
   Future<bool> updateProfile({
@@ -221,17 +274,39 @@ class AuthProvider with ChangeNotifier {
 
   String _getErrorMessage(dynamic error) {
     if (error is DioException) {
-      if (error.response?.statusCode == 401) {
-        return 'Wrong username or password.';
+      // ── Connection-level errors (no response from server) ──────────────────
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.connectionError) {
+        return 'Cannot reach the server. Please check your internet connection.';
       }
-      return 'Network error. Please check your connection.';
-    }
-    if (error.toString().contains('DioException')) {
-      if (error.toString().contains('401')) {
-        return 'Wrong username or password.';
+
+      final statusCode = error.response?.statusCode;
+
+      // ── Try to extract the real error message from the server body ─────────
+      final data = error.response?.data;
+      if (data is Map && data['error'] != null && data['error'].toString().isNotEmpty) {
+        return data['error'].toString();
       }
-      return 'Network error. Please check your connection.';
+
+      // ── Status-code specific fallbacks ─────────────────────────────────────
+      if (statusCode == 401) return 'Wrong username or password.';
+      if (statusCode == 409) return 'An account with this email or username already exists.';
+      if (statusCode == 400) return 'Please check your information and try again.';
+      if (statusCode != null && statusCode >= 500) {
+        return 'The server encountered an error. Please try again in a moment.';
+      }
+
+      return 'Something went wrong. Please try again.';
     }
-    return error.toString();
+
+    // Fallback for non-Dio errors
+    final msg = error.toString();
+    if (msg.contains('401')) return 'Wrong username or password.';
+    if (msg.contains('SocketException') || msg.contains('Connection refused')) {
+      return 'Cannot reach the server. Please check your internet connection.';
+    }
+    return msg;
   }
 }
