@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 import '../services/local_storage_service.dart';
+import 'locale_provider.dart';
+import '../../presentation/widgets/country_customization.dart';
 
 class AuthProvider with ChangeNotifier {
   final ApiService _api = ApiService();
@@ -11,11 +13,16 @@ class AuthProvider with ChangeNotifier {
   User? _user;
   bool _isLoading = false;
   String? _error;
+  LocaleProvider? _localeProvider;
 
   User? get user => _user;
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _user != null;
+
+  /// Inject the [LocaleProvider] so auth events auto-switch the app locale.
+  /// Call this once from a ProxyProvider or directly after construction.
+  void attachLocaleProvider(LocaleProvider lp) => _localeProvider = lp;
 
   Future<String?> getToken() => _storage.getToken();
 
@@ -29,6 +36,7 @@ class AuthProvider with ChangeNotifier {
       await _storage.saveToken(response['token']);
       _user = User.fromJson(response['user']);
       await _storage.saveUser(_user!);
+      _syncLocale();
       
       _isLoading = false;
       notifyListeners();
@@ -51,6 +59,7 @@ class AuthProvider with ChangeNotifier {
       await _storage.saveToken(response['token']);
       _user = User.fromJson(response['user']);
       await _storage.saveUser(_user!);
+      _syncLocale();
       
       _isLoading = false;
       notifyListeners();
@@ -170,6 +179,7 @@ class AuthProvider with ChangeNotifier {
       debugPrint('[AUTH] cachedUser=${cachedUser?.username}');
       if (cachedUser != null) {
         _user = cachedUser;
+        _syncLocale();
         notifyListeners();
         return;
       }
@@ -180,6 +190,7 @@ class AuthProvider with ChangeNotifier {
         final response = await _api.getMe();
         _user = User.fromJson(response);
         await _storage.saveUser(_user!);
+        _syncLocale();
         debugPrint('[AUTH] User fetched and cached: ${_user?.username}');
       } on DioException catch (e) {
         debugPrint('[AUTH] DioException status=${e.response?.statusCode}');
@@ -245,6 +256,7 @@ class AuthProvider with ChangeNotifier {
     String? lastName,
     String? schoolName,
     String? country,
+    String? languagePreference,
   }) async {
     try {
       _isLoading = true;
@@ -255,11 +267,19 @@ class AuthProvider with ChangeNotifier {
       if (firstName != null) data['first_name'] = firstName;
       if (lastName != null) data['last_name'] = lastName;
       if (schoolName != null) data['school_name'] = schoolName;
-      if (country != null) data['country'] = country;
+      if (country != null) {
+        data['country'] = country;
+        // Derive language from country when no explicit override provided
+        data['language_preference'] =
+            languagePreference ?? CountryCustomization.getLanguageCode(country);
+      } else if (languagePreference != null) {
+        data['language_preference'] = languagePreference;
+      }
 
       final response = await _api.updateProfile(data);
       _user = User.fromJson(response);
       await _storage.saveUser(_user!);
+      _syncLocale();
 
       _isLoading = false;
       notifyListeners();
@@ -269,6 +289,20 @@ class AuthProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  // ── Private helpers ───────────────────────────────────────────────────────
+
+  /// Sync the [LocaleProvider] to the user's stored language_preference.
+  void _syncLocale() {
+    final lp = _localeProvider;
+    final langPref = _user?.languagePreference;
+    if (lp == null) return;
+    if (langPref != null && langPref.isNotEmpty) {
+      lp.setLocale(langPref);
+    } else if (_user?.country != null) {
+      lp.setLocaleFromCountry(_user!.country);
     }
   }
 

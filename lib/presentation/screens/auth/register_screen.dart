@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../data/providers/locale_provider.dart';
+import '../../../core/l10n/app_strings.dart';
+import '../../../presentation/widgets/country_customization.dart';
 import '../../widgets/country_dropdown.dart';
 import '../home/home_screen.dart';
 
@@ -38,19 +41,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     final authProvider = context.read<AuthProvider>();
+    final country = _countryController.text.trim().isEmpty
+        ? null
+        : _countryController.text.trim();
+    final langCode = CountryCustomization.getLanguageCode(country);
     final success = await authProvider.register({
       'username': _usernameController.text.trim(),
       'email': _emailController.text.trim().isEmpty ? null : _emailController.text.trim(),
       'password': _passwordController.text,
       'first_name': _firstNameController.text.trim(),
       'last_name': _lastNameController.text.trim(),
-      'school_name': _schoolController.text.trim().isEmpty 
-          ? null 
+      'school_name': _schoolController.text.trim().isEmpty
+          ? null
           : _schoolController.text.trim(),
-      'country': _countryController.text.trim().isEmpty 
-          ? null 
-          : _countryController.text.trim(),
-      'language_preference': 'en',
+      'country': country,
+      'language_preference': langCode,
     });
 
     if (!mounted) return;
@@ -62,7 +67,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? 'Registration failed'),
+          content: Text(authProvider.error ?? AppStrings.of(context).registrationFailed),
           backgroundColor: Colors.red,
         ),
       );
@@ -73,7 +78,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Register'),
+        title: Text(AppStrings.of(context).createAccountTitle),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -84,13 +89,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Create Account',
+                  AppStrings.of(context).createAccountTitle,
                   style: Theme.of(context).textTheme.headlineMedium,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Join the AI Teaching Coach',
+                  AppStrings.of(context).joinCoach,
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -98,23 +103,22 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 CountryDropdown(
                   value: _countryController.text.isEmpty ? null : _countryController.text,
                   onChanged: (value) {
-                    setState(() {
-                       if (value != null) {
-                        _countryController.text = value;
-                       }
-                    });
+                    if (value == null) return;
+                    setState(() => _countryController.text = value);
+                    // Auto-switch app language based on selected country.
+                    context.read<LocaleProvider>().setLocaleFromCountry(value);
                   },
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _firstNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'First Name',
-                    prefixIcon: Icon(Icons.person),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).firstName,
+                    prefixIcon: const Icon(Icons.person),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your first name';
+                      return AppStrings.of(context).enterFirstName;
                     }
                     return null;
                   },
@@ -122,13 +126,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _lastNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Last Name',
-                    prefixIcon: Icon(Icons.person_outline),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).lastName,
+                    prefixIcon: const Icon(Icons.person_outline),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your last name';
+                      return AppStrings.of(context).enterLastName;
                     }
                     return null;
                   },
@@ -136,13 +140,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _usernameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    prefixIcon: Icon(Icons.person),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).username,
+                    prefixIcon: const Icon(Icons.person),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter your username';
+                      return AppStrings.of(context).enterUsername;
                     }
                     return null;
                   },
@@ -151,13 +155,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
-                  decoration: const InputDecoration(
-                    labelText: 'Email (Optional)',
-                    prefixIcon: Icon(Icons.email),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).emailOptional,
+                    prefixIcon: const Icon(Icons.email),
                   ),
                   validator: (value) {
                     if (value != null && value.isNotEmpty && !value.contains('@')) {
-                      return 'Please enter a valid email';
+                      return AppStrings.of(context).enterEmail;
                     }
                     return null;
                   },
@@ -167,7 +171,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   controller: _passwordController,
                   obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    labelText: 'Password',
+                    labelText: AppStrings.of(context).password,
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
                       icon: Icon(
@@ -184,10 +188,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Please enter a password';
+                      return AppStrings.of(context).enterPassword;
                     }
                     if (value.length < 8) {
-                      return 'Password must be at least 8 characters';
+                      return AppStrings.of(context).passwordMinLength;
                     }
                     return null;
                   },
@@ -195,9 +199,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: _schoolController,
-                  decoration: const InputDecoration(
-                    labelText: 'School Name (Optional)',
-                    prefixIcon: Icon(Icons.school),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).schoolNameOptional,
+                    prefixIcon: const Icon(Icons.school),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -214,7 +218,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                                 strokeWidth: 2,
                               ),
                             )
-                          : const Text('Register'),
+                          : Text(AppStrings.of(context).register),
                     );
                   },
                 ),

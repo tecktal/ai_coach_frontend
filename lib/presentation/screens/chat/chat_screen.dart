@@ -11,6 +11,7 @@ import '../../../data/providers/connectivity_provider.dart';
 import '../../../core/utils/app_logger.dart';
 import '../analysis/analysis_screen.dart';
 import '../../widgets/offline_banner.dart';
+import '../../../core/l10n/app_strings.dart';
 
 class ChatScreen extends StatefulWidget {
   final String? analysisId;
@@ -36,12 +37,14 @@ class _ChatScreenState extends State<ChatScreen> {
   // Whether to show the FAB "scroll to bottom" button
   bool _showScrollFab = false;
 
-  final List<String> _suggestions = [
-    "How can I improve engagement?",
-    "What should I focus on improving next?",
-    "Give me a specific example",
-    "What did I do well?",
-  ];
+  List<String> _getSuggestions(BuildContext context) {
+    return [
+      AppStrings.of(context).suggestionEngagement,
+      AppStrings.of(context).suggestionFocusNext,
+      AppStrings.of(context).suggestionExample,
+      AppStrings.of(context).suggestionDidWell,
+    ];
+  }
 
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
@@ -159,9 +162,11 @@ class _ChatScreenState extends State<ChatScreen> {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   void _handleSend([String? suggestion]) {
-    final text = suggestion ?? _controller.text.trim();
-    if (text.isEmpty) return;
-    context.read<ChatProvider>().sendMessage(text);
+    final textToSend = suggestion ?? _controller.text.trim();
+    if (textToSend.isEmpty) return;
+
+    final locale = Localizations.localeOf(context).languageCode;
+    context.read<ChatProvider>().sendMessage(textToSend, language: locale);
     _controller.clear();
     // Schedule scroll after the new message widget is laid out
     WidgetsBinding.instance.addPostFrameCallback((_) => _jumpToBottom());
@@ -320,13 +325,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       const SizedBox(width: 14),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Delete Conversation',
+                        Text(AppStrings.of(context).deleteConversation,
                             style: TextStyle(
                                 color: AppTheme.errorColor,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15)),
                         const SizedBox(height: 2),
-                        Text('Permanently remove this chat',
+                        Text(AppStrings.of(context).permanentlyRemoveChat,
                             style: TextStyle(
                                 color:
                                     AppTheme.errorColor.withValues(alpha: 0.7),
@@ -379,13 +384,13 @@ class _ChatScreenState extends State<ChatScreen> {
                       ),
                       const SizedBox(width: 14),
                       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        const Text('Copy Logs',
+                        Text(AppStrings.of(context).copyLogs,
                             style: TextStyle(
                                 color: Colors.blue,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 15)),
                         const SizedBox(height: 2),
-                        Text('Copy debug logs to clipboard',
+                        Text(AppStrings.of(context).copyLogsSubtitle,
                             style: TextStyle(
                                 color: Colors.blue.withValues(alpha: 0.7),
                                 fontSize: 12)),
@@ -415,7 +420,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           : Colors.grey.shade100,
                       foregroundColor:
                           isDark ? Colors.white70 : AppTheme.textSub),
-                  child: const Text('Cancel',
+                  child: Text(AppStrings.of(context).cancel,
                       style: TextStyle(
                           fontWeight: FontWeight.w600, fontSize: 15)),
                 ),
@@ -472,7 +477,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 size: 15, color: Theme.of(context).primaryColor),
           ),
           const SizedBox(width: 8),
-          Text('AI Coach',
+          Text(AppStrings.of(context).aiCoach,
               style: TextStyle(
                   color: isDark ? Colors.white : AppTheme.textMain,
                   fontWeight: FontWeight.bold,
@@ -530,7 +535,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           size: 15, color: Theme.of(context).primaryColor),
                       const SizedBox(width: 8),
                       Expanded(
-                          child: Text('View Lesson Analysis',
+                          child: Text(AppStrings.of(context).viewLessonAnalysis,
                               style: TextStyle(
                                   color: Theme.of(context).primaryColor,
                                   fontSize: 13,
@@ -606,13 +611,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   .withValues(alpha: 0.85)),
         ),
         const SizedBox(height: 20),
-        Text('AI Coach',
+        Text(AppStrings.of(context).aiCoach,
             style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : AppTheme.textMain)),
         const SizedBox(height: 6),
-        Text("Ask me anything about your lesson\nor teaching practice.",
+        Text(AppStrings.of(context).askAnything,
             style: TextStyle(
                 color: isDark ? Colors.grey[400] : AppTheme.textSub,
                 fontSize: 14,
@@ -624,7 +629,7 @@ class _ChatScreenState extends State<ChatScreen> {
           runSpacing: 8,
           alignment: WrapAlignment.center,
           children:
-              _suggestions.map((s) => _buildChip(provider, s, isDark)).toList(),
+              _getSuggestions(context).map((s) => _buildChip(provider, s, isDark)).toList(),
         ),
       ]),
     );
@@ -761,7 +766,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 size: 14, color: Theme.of(context).primaryColor),
           ),
           const SizedBox(width: 8),
-          Text('AI Coach',
+          Text(AppStrings.of(context).aiCoach,
               style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
@@ -787,7 +792,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Icon(Icons.copy_outlined, size: 14, color: mutedColor),
                 const SizedBox(width: 5),
-                Text('Copy',
+                Text(AppStrings.of(context).copy,
                     style: TextStyle(
                         fontSize: 12,
                         color: mutedColor,
@@ -838,7 +843,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _controller,
                     decoration: InputDecoration(
-                      hintText: 'Message AI Coach…',
+                      hintText: AppStrings.of(context).typeMessage,
                       border: InputBorder.none,
                       hintStyle: TextStyle(
                           color:

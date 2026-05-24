@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'data/providers/auth_provider.dart';
 import 'data/providers/recording_provider.dart';
@@ -7,8 +8,10 @@ import 'data/providers/analysis_provider.dart';
 import 'data/providers/chat_provider.dart';
 import 'data/providers/theme_provider.dart';
 import 'data/providers/connectivity_provider.dart';
+import 'data/providers/locale_provider.dart';
 import 'presentation/screens/splash_screen.dart';
 import 'core/theme/app_theme.dart';
+import 'core/l10n/app_strings.dart';
 import 'presentation/widgets/country_customization.dart';
 import 'core/utils/app_logger.dart';
 import 'data/services/notification_service.dart';
@@ -51,6 +54,10 @@ void main() async {
   // Teachers explicitly choose when to analyse via "Save & Analyse Now"
   // or "Run Analysis" in My Lessons. Auto-uploading violated that intent.
 
+  // Restore persisted language before the first frame.
+  final localeProvider = LocaleProvider();
+  await localeProvider.init();
+
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.dark,
@@ -60,35 +67,42 @@ void main() async {
   runApp(MyApp(
     connectivityProvider: connectivityProvider,
     recordingProvider: recordingProvider,
+    localeProvider: localeProvider,
   ));
 }
 
 class MyApp extends StatelessWidget {
   final ConnectivityProvider connectivityProvider;
   final RecordingProvider recordingProvider;
+  final LocaleProvider localeProvider;
 
   const MyApp({
     super.key,
     required this.connectivityProvider,
     required this.recordingProvider,
+    required this.localeProvider,
   });
 
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        // Use .value so we keep the already-initialised instance
+        // Use .value so we keep the already-initialised instances
         ChangeNotifierProvider<ConnectivityProvider>.value(
             value: connectivityProvider),
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
+        ChangeNotifierProvider<LocaleProvider>.value(
+            value: localeProvider),
+        // Inject localeProvider at creation so _syncLocale() works on login/load.
+        ChangeNotifierProvider<AuthProvider>(
+            create: (_) => AuthProvider()..attachLocaleProvider(localeProvider)),
         ChangeNotifierProvider<RecordingProvider>.value(
             value: recordingProvider),
         ChangeNotifierProvider(create: (_) => AnalysisProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
       ],
-      child: Consumer2<ThemeProvider, AuthProvider>(
-        builder: (context, themeProvider, authProvider, _) {
+      child: Consumer3<ThemeProvider, AuthProvider, LocaleProvider>(
+        builder: (context, themeProvider, authProvider, locProvider, _) {
           final country = authProvider.user?.country;
           final isCustom = CountryCustomization.isCustomized(country);
           final customColor =
@@ -101,6 +115,21 @@ class MyApp extends StatelessWidget {
             themeMode: themeProvider.themeMode,
             home: const SplashScreen(),
             debugShowCheckedModeBanner: false,
+            // ── Localisation ───────────────────────────────────────────────
+            locale: locProvider.locale,
+            supportedLocales: const [
+              Locale('en'),
+              Locale('pt'),
+              Locale('fr'),
+              Locale('am'),
+              Locale('sw'),
+            ],
+            localizationsDelegates: const [
+              AppStringsDelegate(),
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
           );
         },
       ),

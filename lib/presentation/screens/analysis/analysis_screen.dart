@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:audioplayers/audioplayers.dart';
@@ -42,6 +43,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   // TTS State
   bool _isSpeaking = false;
   String? _currentlySpeakingSection;
+
+  /// True if a content_warning was present the moment the screen first loaded.
+  /// Prevents the banner from appearing on a pull-to-refresh after the teacher
+  /// has already reviewed the analysis (the delayed-banner bug).
+  bool? _hasContentWarningAtLoad; // null = not yet checked
 
   @override
   void initState() {
@@ -87,8 +93,57 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         if (recording != null && recording.durationSeconds != null && recording.durationSeconds! > 0) {
           _playbackDuration = Duration(seconds: recording.durationSeconds!);
         }
+        // Lock the banner to whatever was present on first load only
+        if (_hasContentWarningAtLoad == null && analysis != null) {
+          final cw = analysis.timeOnLearning['content_warning'];
+          _hasContentWarningAtLoad = (cw != null && cw is Map);
+        }
       });
     }
+  }
+
+  /// Compiles the full analysis as plain text and copies it to the clipboard.
+  void _copyAllFeedback() {
+    if (_analysis == null) return;
+    final buf = StringBuffer();
+    buf.writeln('LESSON ANALYSIS');
+    buf.writeln('Lesson: ${_recording?.title ?? _analysis!.id}');
+    buf.writeln('Date:   ${DateFormat("MMMM d, yyyy").format(_analysis!.createdAt)}');
+    buf.writeln();
+
+    if (_analysis!.strengths.isNotEmpty) {
+      buf.writeln('STRENGTHS');
+      for (final s in _analysis!.strengths) {
+        buf.writeln('\u2022 $s');
+      }
+      buf.writeln();
+    }
+
+    if (_analysis!.areasForImprovement.isNotEmpty) {
+      buf.writeln('AREAS FOR IMPROVEMENT');
+      for (final a in _analysis!.areasForImprovement) {
+        buf.writeln('\u2022 $a');
+      }
+      buf.writeln();
+    }
+
+    if (_analysis!.recommendations.isNotEmpty) {
+      buf.writeln('RECOMMENDATIONS');
+      for (int i = 0; i < _analysis!.recommendations.length; i++) {
+        final r = _analysis!.recommendations[i];
+        buf.writeln('${i + 1}. ${r.title}');
+        if (r.description.isNotEmpty) buf.writeln('   ${r.description}');
+        buf.writeln();
+      }
+    }
+
+    Clipboard.setData(ClipboardData(text: buf.toString()));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Analysis copied to clipboard'),
+        duration: Duration(seconds: 2),
+      ),
+    );
   }
 
   Future<void> _speak(String? text, String sectionId) async {
@@ -264,6 +319,14 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           icon: Icon(Icons.arrow_back_ios_new, size: 20, color: isDark ? Colors.white : AppTheme.textMain),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.copy_all_rounded, size: 20,
+                color: isDark ? Colors.white70 : AppTheme.textSub),
+            tooltip: 'Copy all feedback',
+            onPressed: _copyAllFeedback,
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -273,12 +336,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             child: RefreshIndicator(
               onRefresh: _loadAnalysis,
               color: Theme.of(context).primaryColor,
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Content warning banner scrolls with the page (not sticky)
-                    _buildContentWarningBanner(),
+              child: SelectionArea(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                    // Content warning banner — only if it was present on first load
+                    if (_hasContentWarningAtLoad == true) _buildContentWarningBanner(),
                     Padding(
                       padding: const EdgeInsets.all(24),
                       child: Column(
@@ -357,10 +421,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             ],                  // closes outer scroll Column children
           ),                    // closes outer scroll Column
         ),                      // closes SingleChildScrollView
-      ),                        // closes RefreshIndicator
-    ),                          // closes Expanded
-        ],                      // closes body Column children
-      ),                        // closes body Column
+      ),                        // closes SelectionArea
+    ),                          // closes RefreshIndicator
+  ),                            // closes Expanded
+  ],                            // closes body Column children
+),                              // closes body Column
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           if (_analysis != null) {

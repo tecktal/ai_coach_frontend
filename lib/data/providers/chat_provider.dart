@@ -151,7 +151,7 @@ class ChatProvider with ChangeNotifier {
 
   // ── Send message ──────────────────────────────────────────────────────────
 
-  Future<void> sendMessage(String content) async {
+  Future<void> sendMessage(String content, {String? language}) async {
     if (_currentSessionId == null) return;
 
     // Add user message immediately so it appears in the chat.
@@ -169,8 +169,20 @@ class ChatProvider with ChangeNotifier {
     final aiTempId = 'ai_${DateTime.now().millisecondsSinceEpoch}';
     String fullContent = '';
 
+    String apiContent = content;
+    if (language != null && language != 'en') {
+      String langName = 'English';
+      switch (language) {
+        case 'fr': langName = 'French'; break;
+        case 'pt': langName = 'Portuguese'; break;
+        case 'am': langName = 'Amharic'; break;
+        case 'sw': langName = 'Swahili'; break;
+      }
+      apiContent = '$content\n\n[System Instruction: Please reply in $langName]';
+    }
+
     try {
-      final stream = _api.streamChatResponse(_currentSessionId!, content);
+      final stream = _api.streamChatResponse(_currentSessionId!, apiContent);
 
       // Buffer silently — no per-chunk notifyListeners().
       //

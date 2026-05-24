@@ -4,6 +4,8 @@ import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/chat_provider.dart';
 import '../../../data/providers/recording_provider.dart';
 import '../../../data/providers/theme_provider.dart';
+import '../../../data/providers/locale_provider.dart';
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/verification_banner.dart';
@@ -20,6 +22,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   void _showEditNameSheet(BuildContext context) {
     final authProvider = context.read<AuthProvider>();
+    final localeProvider = context.read<LocaleProvider>();
     final user = authProvider.user;
     final isDark = context.read<ThemeProvider>().isDark;
 
@@ -63,7 +66,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 20),
                   Text(
-                    'Edit Profile',
+                    AppStrings.of(context).editProfile,
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -76,6 +79,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     onChanged: (val) {
                       if (val != null) {
                         countryCtrl.text = val;
+                        // Auto-switch app language when country changes.
+                        localeProvider.setLocaleFromCountry(val);
                       }
                     },
                   ),
@@ -93,7 +98,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Please enter your first name' : null,
+                        (v == null || v.trim().isEmpty) ? AppStrings.of(context).enterFirstName : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
@@ -109,13 +114,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                     ),
                     validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Please enter your last name' : null,
+                        (v == null || v.trim().isEmpty) ? AppStrings.of(context).enterLastName : null,
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
                     controller: schoolNameCtrl,
                     decoration: InputDecoration(
-                      labelText: 'School',
+                      labelText: AppStrings.of(context).school,
                       prefixIcon: Icon(Icons.school_outlined),
                       filled: true,
                       fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
@@ -138,6 +143,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   lastName: lastNameCtrl.text.trim(),
                                   schoolName: schoolNameCtrl.text.trim().isEmpty ? null : schoolNameCtrl.text.trim(),
                                   country: countryCtrl.text.trim().isEmpty ? null : countryCtrl.text.trim(),
+                                  languagePreference: localeProvider.languageCode,
                                 );
                                 if (!sheetCtx.mounted) return;
                                 Navigator.pop(sheetCtx);
@@ -146,8 +152,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     SnackBar(
                                       content: Text(
                                         success
-                                            ? 'Name updated successfully!'
-                                            : (auth.error ?? 'Update failed'),
+                                            ? AppStrings.of(context).nameUpdated
+                                            : (auth.error ?? AppStrings.of(context).updateFailed),
                                       ),
                                       backgroundColor:
                                           success ? Colors.green : Colors.red,
@@ -169,9 +175,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 20,
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
-                            : const Text(
-                                'Save Changes',
-                                style: TextStyle(
+                            : Text(
+                                AppStrings.of(context).saveChanges,
+                                style: const TextStyle(
                                     fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                       );
@@ -238,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 20),
                         Text(
-                          'Change Password',
+                          AppStrings.of(context).changePasswordTitle,
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -247,7 +253,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Your new password must be at least 6 characters.',
+                          AppStrings.of(context).changePasswordSubtitle,
                           style: TextStyle(
                               fontSize: 13,
                               color: isDark
@@ -261,7 +267,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           controller: currentCtrl,
                           obscureText: !showCurrent,
                           decoration: InputDecoration(
-                            labelText: 'Current Password',
+                            labelText: AppStrings.of(context).currentPassword,
                             prefixIcon:
                                 const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
@@ -281,7 +287,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           validator: (v) => (v == null || v.isEmpty)
-                              ? 'Enter your current password'
+                              ? AppStrings.of(context).enterCurrentPassword
                               : null,
                         ),
                         const SizedBox(height: 14),
@@ -291,7 +297,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           controller: newCtrl,
                           obscureText: !showNew,
                           decoration: InputDecoration(
-                            labelText: 'New Password',
+                            labelText: AppStrings.of(context).newPassword,
                             prefixIcon: const Icon(Icons.lock_reset_rounded),
                             suffixIcon: IconButton(
                               icon: Icon(showNew
@@ -311,11 +317,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           validator: (v) {
                             if (v == null || v.isEmpty) {
-                              return 'Enter a new password';
+                              return AppStrings.of(context).enterNewPassword;
                             }
-                            if (v.length < 6) return 'At least 6 characters';
+                            if (v.length < 6) return AppStrings.of(context).atLeast6Chars;
                             if (v == currentCtrl.text) {
-                              return 'New password must differ from current';
+                              return AppStrings.of(context).newPasswordMustDiffer;
                             }
                             return null;
                           },
@@ -327,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           controller: confirmCtrl,
                           obscureText: !showConfirm,
                           decoration: InputDecoration(
-                            labelText: 'Confirm New Password',
+                            labelText: AppStrings.of(context).confirmNewPassword,
                             prefixIcon:
                                 const Icon(Icons.check_circle_outline),
                             suffixIcon: IconButton(
@@ -347,7 +353,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ),
                           validator: (v) => v != newCtrl.text
-                              ? 'Passwords do not match'
+                              ? AppStrings.of(context).passwordsDoNotMatch
                               : null,
                         ),
                         const SizedBox(height: 24),
@@ -370,9 +376,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                           .showSnackBar(
                                         SnackBar(
                                           content: Text(ok
-                                              ? 'Password changed successfully!'
+                                              ? AppStrings.of(context).passwordChanged
                                               : (auth.error ??
-                                                  'Failed to change password')),
+                                                  AppStrings.of(context).failedToChangePassword)),
                                           backgroundColor:
                                               ok ? Colors.green : Colors.red,
                                           behavior: SnackBarBehavior.floating,
@@ -396,8 +402,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Colors.white))
-                                : const Text('Update Password',
-                                    style: TextStyle(
+                                : Text(AppStrings.of(context).updatePassword,
+                                    style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold)),
                           ),
@@ -547,15 +553,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildProfileItem(
                               context,
                               Icons.school_outlined,
-                              'School',
-                              user?.schoolName ?? 'Not set',
+                              AppStrings.of(context).school,
+                              (user?.schoolName != null && user!.schoolName!.isNotEmpty) ? user.schoolName! : AppStrings.of(context).notSet,
                               isDark),
                           _buildDivider(isDark),
                           _buildProfileItem(
                               context,
                               Icons.public,
-                              'Country',
+                              AppStrings.of(context).country,
                               countryDisplay,
+                              isDark),
+                          _buildDivider(isDark),
+                          _buildProfileItem(
+                              context,
+                              Icons.translate_rounded,
+                              AppStrings.of(context).language,
+                              context.watch<LocaleProvider>().languageName,
                               isDark),
                         ],
                       ),
@@ -604,7 +617,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(width: 16),
                             Text(
-                              'Dark Mode',
+                              AppStrings.of(context).darkMode,
                               style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 color: isDark ? Colors.white : AppTheme.textMain,
@@ -674,7 +687,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 ),
                                 const SizedBox(width: 16),
                                 Text(
-                                  'Change Password',
+                                  AppStrings.of(context).changePassword,
                                   style: TextStyle(
                                     fontWeight: FontWeight.w600,
                                     color: isDark
@@ -709,13 +722,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               backgroundColor: isDark
                                   ? const Color(0xFF1E293B)
                                   : Colors.white,
-                              title: Text('Log Out?',
+                              title: Text(AppStrings.of(context).logOut,
                                   style: TextStyle(
                                       color: isDark
                                           ? Colors.white
                                           : AppTheme.textMain)),
                               content: Text(
-                                  'Are you sure you want to log out?',
+                                  AppStrings.of(context).logOutConfirm,
                                   style: TextStyle(
                                       color: isDark
                                           ? Colors.grey[300]
@@ -724,14 +737,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 TextButton(
                                   onPressed: () =>
                                       Navigator.pop(context, false),
-                                  child: const Text('Cancel'),
+                                  child: Text(AppStrings.of(context).cancel),
                                 ),
                                 TextButton(
                                   onPressed: () =>
                                       Navigator.pop(context, true),
                                   style: TextButton.styleFrom(
                                       foregroundColor: AppTheme.errorColor),
-                                  child: const Text('Log Out'),
+                                  child: Text(AppStrings.of(context).logOut),
                                 ),
                               ],
                             ),
@@ -763,9 +776,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             side: BorderSide.none,
                           ),
                         ),
-                        child: const Text(
-                          'Log Out',
-                          style: TextStyle(
+                        child: Text(
+                          AppStrings.of(context).logOut,
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),

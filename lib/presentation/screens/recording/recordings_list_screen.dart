@@ -10,6 +10,7 @@ import '../analysis/analysis_screen.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/offline_banner.dart';
+import '../../../core/l10n/app_strings.dart';
 import 'widgets/lesson_card.dart';
 import 'local_draft_detail_screen.dart';
 
@@ -244,7 +245,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'My Lessons',
+          AppStrings.of(context).myLessons,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : AppTheme.textMain,
@@ -317,7 +318,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                       style: TextStyle(
                           color: isDark ? Colors.white : AppTheme.textMain),
                       decoration: InputDecoration(
-                        hintText: 'Search lessons...',
+                        hintText: AppStrings.of(context).searchLessons,
                         hintStyle: TextStyle(
                             color: isDark
                                 ? Colors.grey[500]
@@ -365,12 +366,12 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13),
                             items: [
-                              'All',
-                              'Math',
-                              'Science',
-                              'English',
-                              'History',
-                              'Art'
+                              AppStrings.of(context).all,
+                              AppStrings.of(context).subjectMath,
+                              AppStrings.of(context).subjectScience,
+                              AppStrings.of(context).subjectEnglish,
+                              AppStrings.of(context).subjectHistory,
+                              AppStrings.of(context).subjectArt
                             ].map((String value) {
                               return DropdownMenuItem<String>(
                                   value: value, child: Text(value));
@@ -386,7 +387,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                       TextButton.icon(
                         onPressed: _showSortOptions,
                         icon: const Icon(Icons.sort_rounded, size: 18),
-                        label: const Text('Sort'),
+                        label: Text(AppStrings.of(context).sort),
                         style: TextButton.styleFrom(
                           foregroundColor: Theme.of(context).primaryColor,
                           padding: const EdgeInsets.symmetric(
@@ -416,19 +417,19 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                 child: Row(
                   children: [
                     _buildFilterTab(
-                      label: 'All',
+                      label: AppStrings.of(context).all,
                       count: recordingProvider.recordings.length,
                       filter: AnalysisFilter.all,
                       isDark: isDark,
                     ),
                     _buildFilterTab(
-                      label: 'Analyzed',
+                      label: AppStrings.of(context).analyzed,
                       count: totalAnalyzed,
                       filter: AnalysisFilter.analyzed,
                       isDark: isDark,
                     ),
                     _buildFilterTab(
-                      label: 'Not Analyzed',
+                      label: AppStrings.of(context).notAnalyzed,
                       count: totalNotAnalyzed,
                       filter: AnalysisFilter.notAnalyzed,
                       isDark: isDark,
@@ -457,7 +458,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                                       : Colors.grey.shade200),
                               const SizedBox(height: 16),
                               Text(
-                                'No lessons found',
+                                AppStrings.of(context).noLessonsFound,
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleLarge

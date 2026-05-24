@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/auth_provider.dart';
 import '../../../data/services/local_storage_service.dart';
+import '../../../core/l10n/app_strings.dart';
 import '../home/home_screen.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -65,7 +66,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? 'Failed to update profile'),
+          content: Text(authProvider.error ?? AppStrings.of(context).failedToSave),
           backgroundColor: Colors.red,
         ),
       );
@@ -95,13 +96,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 
                 // Welcome Text
                 Text(
-                  'Welcome to AI Teaching Coach!',
+                  AppStrings.of(context).onboardingWelcome,
                   style: Theme.of(context).textTheme.headlineSmall,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Let\'s get to know you better. This information will help us personalize your experience.',
+                  AppStrings.of(context).onboardingSubtitle,
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
@@ -110,15 +111,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 // First Name
                 TextFormField(
                   controller: _firstNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'First Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).firstName,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.person),
                   ),
                   textCapitalization: TextCapitalization.words,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your first name';
+                      return AppStrings.of(context).enterFirstName;
                     }
                     return null;
                   },
@@ -128,15 +129,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 // Last Name
                 TextFormField(
                   controller: _lastNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Last Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.person_outline),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).lastName,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.person_outline),
                   ),
                   textCapitalization: TextCapitalization.words,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your last name';
+                      return AppStrings.of(context).enterLastName;
                     }
                     return null;
                   },
@@ -146,15 +147,15 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 // School Name
                 TextFormField(
                   controller: _schoolNameController,
-                  decoration: const InputDecoration(
-                    labelText: 'School Name',
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.school),
+                  decoration: InputDecoration(
+                    labelText: AppStrings.of(context).schoolName,
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.school),
                   ),
                   textCapitalization: TextCapitalization.words,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your school name';
+                      return AppStrings.of(context).enterSchoolName;
                     }
                     return null;
                   },
@@ -173,16 +174,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : const Text(
-                          'Continue',
-                          style: TextStyle(fontSize: 16),
+                      : Text(
+                          AppStrings.of(context).onboardingContinue,
+                          style: const TextStyle(fontSize: 16),
                         ),
                 ),
                 const SizedBox(height: 16),
                 
                 // Info Text
                 Text(
-                  'Your recordings will be saved with your name and school for easy identification.',
+                  AppStrings.of(context).onboardingInfo,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey,
                       ),

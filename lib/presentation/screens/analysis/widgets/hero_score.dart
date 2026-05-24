@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
 import '../../../../core/theme/app_theme.dart';
 
+/// Displays the lesson title and date as a clean, centered header.
+/// No score ring, no grade labels — per World Bank feedback.
 class HeroScore extends StatelessWidget {
-  final double score;
+  final double score; // kept for API compatibility but not displayed
   final String date;
   final String title;
 
@@ -14,83 +15,59 @@ class HeroScore extends StatelessWidget {
     required this.title,
   });
 
-  String _getQualitativeLabel(double score) {
-    if (score >= 4.0) return 'Excellent';
-    if (score >= 3.0) return 'Good';
-    if (score >= 2.0) return 'Developing';
-    return 'Needs Focus';
-  }
-
   @override
   Widget build(BuildContext context) {
-    final label = _getQualitativeLabel(score);
-    final color = AppTheme.getScoreColorDouble(score);
+    final primaryColor = Theme.of(context).primaryColor;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        // "Analysis Complete" pill
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+          decoration: BoxDecoration(
+            color: primaryColor.withValues(alpha: 0.10),
+            borderRadius: BorderRadius.circular(20),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            title,
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: AppTheme.textMain,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            date,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppTheme.textSub,
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Ring shows progress visually but no number inside
-          CircularPercentIndicator(
-            radius: 80.0,
-            lineWidth: 16.0,
-            animation: true,
-            percent: (score / 5.0).clamp(0.0, 1.0),
-            center: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  score >= 3.0 ? Icons.check_circle_outline : Icons.trending_up,
-                  color: color,
-                  size: 28,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.check_circle_outline_rounded,
+                  size: 14, color: primaryColor),
+              const SizedBox(width: 6),
+              Text(
+                'Analysis Complete',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.3,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14.0,
-                    color: color,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-            circularStrokeCap: CircularStrokeCap.round,
-            backgroundColor: Colors.grey.shade100,
-            progressColor: color,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 20),
+        // Lesson title
+        Text(
+          title,
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: AppTheme.textMain,
+            height: 1.25,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        // Date
+        Text(
+          date,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: AppTheme.textSub,
+            letterSpacing: 0.2,
+          ),
+        ),
+      ],
     );
   }
 }

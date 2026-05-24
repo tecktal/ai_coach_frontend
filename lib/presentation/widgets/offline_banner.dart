@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../data/providers/connectivity_provider.dart';
+import '../../core/l10n/app_strings.dart';
 
 /// A compact amber banner that slides in below the AppBar (or at the top of
 /// the screen body) whenever the device has no internet connection.
@@ -44,9 +45,9 @@ class OfflineBanner extends StatelessWidget {
                 color: Colors.white,
               ),
               const SizedBox(width: 8),
-              const Text(
-                'No internet  ·  Offline mode',
-                style: TextStyle(
+              Text(
+                AppStrings.of(context).offlineMessage,
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,

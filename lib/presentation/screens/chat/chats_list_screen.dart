@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../data/providers/chat_provider.dart';
+import '../../../core/l10n/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../widgets/app_toast.dart';
 import '../../widgets/offline_banner.dart';
@@ -120,10 +121,10 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                 child: Text('Sort By',
                     style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
               ),
-              tile('Date (Newest First)', Icons.calendar_today, _ChatSortOption.dateNewest),
-              tile('Date (Oldest First)', Icons.calendar_today, _ChatSortOption.dateOldest),
-              tile('Alphabetical (A-Z)', Icons.sort_by_alpha, _ChatSortOption.alphabeticalAZ),
-              tile('Alphabetical (Z-A)', Icons.sort_by_alpha, _ChatSortOption.alphabeticalZA),
+              tile(AppStrings.of(context).sortDateNewest, Icons.calendar_today, _ChatSortOption.dateNewest),
+              tile(AppStrings.of(context).sortDateOldest, Icons.calendar_today, _ChatSortOption.dateOldest),
+              tile(AppStrings.of(context).sortAlphabeticalAZ, Icons.sort_by_alpha, _ChatSortOption.alphabeticalAZ),
+              tile(AppStrings.of(context).sortAlphabeticalZA, Icons.sort_by_alpha, _ChatSortOption.alphabeticalZA),
             ],
           ),
         );
@@ -135,14 +136,14 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Chat'),
+        title: Text(AppStrings.of(context).deleteConversation),
         content: Text('Delete "$title"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(AppStrings.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Delete'),
+            child: Text(AppStrings.of(context).delete),
           ),
         ],
       ),
@@ -178,7 +179,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Chats',
+          AppStrings.of(context).coaching,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : AppTheme.textMain,
@@ -225,7 +226,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                           onChanged: (val) => setState(() => _searchQuery = val),
                           style: TextStyle(color: isDark ? Colors.white : AppTheme.textMain),
                           decoration: InputDecoration(
-                            hintText: 'Search chats...',
+                            hintText: AppStrings.of(context).search,
                             hintStyle: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey.shade400),
                             prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[500] : Colors.grey.shade400),
                             border: InputBorder.none,
@@ -266,7 +267,7 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                           TextButton.icon(
                             onPressed: _showSortOptions,
                             icon: Icon(Icons.sort_rounded, size: 18),
-                            label: const Text('Sort'),
+                            label: Text(AppStrings.of(context).sort),
                             style: TextButton.styleFrom(
                               foregroundColor: Theme.of(context).primaryColor,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -291,7 +292,9 @@ class _ChatsListScreenState extends State<ChatsListScreen> {
                                   color: isDark ? Colors.grey[700] : Colors.grey.shade200),
                               const SizedBox(height: 16),
                               Text(
-                                provider.sessions.isEmpty ? 'No conversations yet' : 'No chats match your search',
+                                provider.sessions.isEmpty
+                                    ? AppStrings.of(context).noChatsYet
+                                    : AppStrings.of(context).search,
                                 style: TextStyle(color: isDark ? Colors.grey[500] : Colors.grey.shade400),
                               ),
                             ],

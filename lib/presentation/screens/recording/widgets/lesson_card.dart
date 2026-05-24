@@ -259,16 +259,9 @@ class LessonCard extends StatelessWidget {
       );
     }
 
-    // Analysis complete — show qualitative label only (no number)
+    // Analysis complete — neutral badge only, no grade labels
     if (score != null && score! > 0) {
-      final label = score! >= 4.0
-          ? 'Excellent'
-          : score! >= 3.0
-              ? 'Good'
-              : score! >= 2.0
-                  ? 'Developing'
-                  : 'Needs Focus';
-      final color = AppTheme.getScoreColor(score!.toInt());
+      final color = Theme.of(context).primaryColor;
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
@@ -281,7 +274,7 @@ class LessonCard extends StatelessWidget {
             Icon(Icons.check_circle_outline_rounded, size: 12, color: color),
             const SizedBox(width: 4),
             Text(
-              label,
+              'Analysed',
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,

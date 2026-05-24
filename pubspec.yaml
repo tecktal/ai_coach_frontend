@@ -9,6 +9,8 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
   
   # State Management
   provider: ^6.1.1
@@ -37,7 +39,7 @@ dependencies:
   connectivity_plus: ^5.0.2
   file_picker: ^8.0.0
   uuid: ^4.2.2
-  intl: ^0.18.1
+  intl: ^0.20.2
   
   # UI
   cupertino_icons: ^1.0.2
@@ -56,6 +58,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  generate: true
   
   # Add fonts if needed
   # fonts:

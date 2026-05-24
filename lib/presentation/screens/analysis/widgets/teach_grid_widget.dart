@@ -162,50 +162,7 @@ class TeachGridWidget extends StatelessWidget {
                   ],
                 ),
               ),
-              // Qualitative indicator only — no numeric score shown
-              if (hasScore)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppTheme.getScoreColorDouble(avgScore).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        avgScore >= 3 ? Icons.check_circle_outline : Icons.info_outline,
-                        color: AppTheme.getScoreColorDouble(avgScore),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 6),
-                      Text(
-                        avgScore >= 3.5 ? 'Strong' : avgScore >= 2.5 ? 'Developing' : 'Needs Focus',
-                        style: TextStyle(
-                          color: AppTheme.getScoreColorDouble(avgScore),
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    'N/A',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
+              // No score labels per World Bank feedback — domain title only
             ],
           ),
           children: [

@@ -141,22 +141,22 @@ class _HomeScreenState extends State<HomeScreen> {
             NavigationDestination(
               icon: const Icon(Icons.mic_none_rounded),
               selectedIcon: Icon(Icons.mic_rounded, color: Theme.of(context).primaryColor),
-              label: 'Record',
+              label: AppStrings.of(context).navRecord,
             ),
             NavigationDestination(
               icon: const Icon(Icons.analytics_outlined),
               selectedIcon: Icon(Icons.analytics_rounded, color: Theme.of(context).primaryColor),
-              label: 'My Lessons',
+              label: AppStrings.of(context).navMyLessons,
             ),
             NavigationDestination(
               icon: const Icon(Icons.chat_bubble_outline_rounded),
               selectedIcon: Icon(Icons.chat_bubble_rounded, color: Theme.of(context).primaryColor),
-              label: 'Chats',
+              label: AppStrings.of(context).navChats,
             ),
             NavigationDestination(
               icon: profileIcon(false),
               selectedIcon: profileIcon(true),
-              label: 'Profile',
+              label: AppStrings.of(context).navProfile,
             ),
           ],
         ),
@@ -206,6 +206,7 @@ class _RecordingTabState extends State<_RecordingTab> {
   
   String _selectedSubject = 'Math';
   final List<String> _subjects = ['Math', 'Science', 'English', 'History', 'Art', 'Other'];
+  final TextEditingController _customSubjectController = TextEditingController();
 
   final _formKey = GlobalKey<FormState>();
 
@@ -245,6 +246,7 @@ class _RecordingTabState extends State<_RecordingTab> {
     _timer?.cancel();
     _titleController.dispose();
     _subjectController.dispose();
+    _customSubjectController.dispose();
     _gradeController.dispose();
     super.dispose();
   }
@@ -421,9 +423,11 @@ class _RecordingTabState extends State<_RecordingTab> {
         localFilePath: _recordingPath!,
         userId: userId,
         title: _titleController.text.trim(),
-        subject: _selectedSubject,
+        subject: _selectedSubject == 'Other'
+            ? _customSubjectController.text.trim()
+            : _selectedSubject,
         gradeLevel: _gradeController.text.trim(),
-        language: 'en',
+        language: Localizations.localeOf(context).languageCode,
         durationSeconds: _duration.inSeconds,
       );
 
@@ -503,9 +507,11 @@ class _RecordingTabState extends State<_RecordingTab> {
         localFilePath: _recordingPath!,
         userId: userId,
         title: _titleController.text.trim(),
-        subject: _selectedSubject,
+        subject: _selectedSubject == 'Other'
+            ? _customSubjectController.text.trim()
+            : _selectedSubject,
         gradeLevel: _gradeController.text.trim(),
-        language: 'en',
+        language: Localizations.localeOf(context).languageCode,
         durationSeconds: _duration.inSeconds,
       );
 
@@ -794,7 +800,7 @@ class _RecordingTabState extends State<_RecordingTab> {
               child: OutlinedButton.icon(
                 onPressed: _importAudio,
                 icon: Icon(Icons.upload_file_rounded, size: 20),
-                label: const Text('Import Audio File', style: TextStyle(fontSize: 16)),
+                label: Text(AppStrings.of(context).importAudio, style: const TextStyle(fontSize: 16)),
                 style: OutlinedButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
                   side: BorderSide(color: isDark ? Colors.grey[600]! : AppTheme.borderLight),
@@ -1128,7 +1134,7 @@ class _RecordingTabState extends State<_RecordingTab> {
                 child: Column(
                   children: [
                     CustomTextField(
-                      label: 'Lesson Title',
+                      label: AppStrings.of(context).lessonTitle,
                       controller: _titleController,
                       hint: 'e.g., Algebra 101',
                       validator: (v) => v!.isEmpty ? 'Required' : null,
@@ -1159,11 +1165,44 @@ class _RecordingTabState extends State<_RecordingTab> {
                             ),
                           ),
                         ),
+                        // Free-text input revealed when "Other" is selected
+                        AnimatedCrossFade(
+                          duration: const Duration(milliseconds: 200),
+                          crossFadeState: _selectedSubject == 'Other'
+                              ? CrossFadeState.showSecond
+                              : CrossFadeState.showFirst,
+                          firstChild: const SizedBox.shrink(),
+                          secondChild: Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: TextFormField(
+                              controller: _customSubjectController,
+                              decoration: InputDecoration(
+                                hintText: 'e.g., Geography, Physical Education…',
+                                hintStyle: TextStyle(color: isDark ? Colors.white38 : Colors.grey.shade400),
+                                filled: true,
+                                fillColor: isDark ? const Color(0xFF1E293B) : AppTheme.surfaceLight,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: isDark ? Colors.transparent : AppTheme.borderLight),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(color: isDark ? Colors.transparent : AppTheme.borderLight),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                              ),
+                              style: TextStyle(color: isDark ? Colors.white : AppTheme.textMain),
+                              validator: (v) => _selectedSubject == 'Other' && (v == null || v.trim().isEmpty)
+                                  ? 'Please enter the subject'
+                                  : null,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
                     CustomTextField(
-                      label: 'Grade Level',
+                      label: AppStrings.of(context).gradeLevel,
                       controller: _gradeController,
                       hint: 'e.g., 9th Grade',
                       validator: (v) => v!.isEmpty ? 'Required' : null,
@@ -1217,7 +1256,7 @@ class _RecordingTabState extends State<_RecordingTab> {
                             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                           )
                         : const Icon(Icons.analytics_rounded),
-                    label: Text(_savingNow ? 'Saving & uploading…' : 'Save & Analyse Now'),
+                    label: Text(_savingNow ? '${AppStrings.of(context).uploadingLesson}…' : AppStrings.of(context).saveAndAnalyze),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Theme.of(context).primaryColor,
                       foregroundColor: Colors.white,
@@ -1249,7 +1288,7 @@ class _RecordingTabState extends State<_RecordingTab> {
                                   strokeWidth: 2, color: Color(0xFF64748B)),
                             )
                           : const Icon(Icons.save_outlined),
-                      label: Text(_savingLater ? 'Saving…' : 'Save for Later'),
+                      label: Text(_savingLater ? '${AppStrings.of(context).saveLater}…' : AppStrings.of(context).saveForLater),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.textSub,
                         padding: const EdgeInsets.symmetric(vertical: 16),

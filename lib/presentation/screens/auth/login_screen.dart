@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../data/providers/auth_provider.dart';
+import '../../../core/l10n/app_strings.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import '../home/home_screen.dart';
@@ -46,7 +47,7 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.error ?? 'Login failed'),
+          content: Text(authProvider.error ?? AppStrings.of(context).loginFailed),
           backgroundColor: AppTheme.errorColor,
         ),
       );
@@ -86,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   
                   // Header
                   Text(
-                    'Welcome Back',
+                    AppStrings.of(context).welcomeBack,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isDark ? Colors.white : AppTheme.textMain,
@@ -95,7 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sign in to continue your lesson analysis.',
+                    AppStrings.of(context).signInSubtitle,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isDark ? Colors.grey[400] : AppTheme.textSub,
                     ),
@@ -110,20 +111,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         CustomTextField(
-                          label: 'Username',
-                          hint: 'teacher_name',
+                          label: AppStrings.of(context).username,
+                          hint: AppStrings.of(context).usernameHint,
                           controller: _usernameController,
                           keyboardType: TextInputType.text,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your username';
+                              return AppStrings.of(context).enterUsername;
                             }
                             return null;
                           },
                         ),
                         const SizedBox(height: 20),
                         CustomTextField(
-                          label: 'Password',
+                          label: AppStrings.of(context).password,
                           hint: '••••••••',
                           controller: _passwordController,
                           obscureText: _obscurePassword,
@@ -142,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter your password';
+                              return AppStrings.of(context).enterPassword;
                             }
                             return null;
                           },
@@ -163,9 +164,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               foregroundColor: Theme.of(context).primaryColor,
                               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
                             ),
-                            child: const Text(
-                              'Forgot password?',
-                              style: TextStyle(fontWeight: FontWeight.w600),
+                            child: Text(
+                              AppStrings.of(context).forgotPassword,
+                              style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
                         ),
@@ -176,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Consumer<AuthProvider>(
                           builder: (context, auth, child) {
                             return PrimaryButton(
-                              text: 'Sign In',
+                              text: AppStrings.of(context).signIn,
                               onPressed: _login,
                               isLoading: auth.isLoading,
                             );
@@ -215,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        'New user?',
+                        AppStrings.of(context).newUser,
                         style: TextStyle(
                           color: isDark ? Colors.grey[400] : AppTheme.textSub,
                         ),
@@ -231,9 +232,9 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: TextButton.styleFrom(
                           foregroundColor: Theme.of(context).primaryColor,
                         ),
-                        child: const Text(
-                          'Create an account',
-                          style: TextStyle(fontWeight: FontWeight.w600),
+                        child: Text(
+                          AppStrings.of(context).createAccount,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -243,7 +244,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   
                   // Copyright
                   Text(
-                    '© 2024 AI Teaching Coach',
+                    AppStrings.of(context).copyright,
                     style: TextStyle(
                       fontSize: 10,
                       color: isDark ? Colors.grey[600] : AppTheme.textSub,

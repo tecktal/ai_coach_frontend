@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "799828925680",
+    "project_id": "ai-coach-d1431",
+    "storage_bucket": "ai-coach-d1431.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:799828925680:android:f61c1bfdf95c5ac0873635",
+        "android_client_info": {
+          "package_name": "com.tecktal.ai_coach"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBXL3anh1Fps4eDIa0vbZMKm0UtDxmJrDU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
