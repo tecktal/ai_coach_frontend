@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../core/constants/api_constants.dart';
@@ -207,7 +208,7 @@ class ApiService {
       await for (final chunk in stream) {
         chunkIndex++;
         totalBytesReceived += chunk.length;
-        final String text = String.fromCharCodes(chunk);
+        final String text = utf8.decode(chunk, allowMalformed: true);
 
         // ── DIAGNOSTIC LOG: raw chunk ──────────────────────────────────────
         final preview = text.length > 80 ? '${text.substring(0, 80)}...' : text;

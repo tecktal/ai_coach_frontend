@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/l10n/app_strings.dart';
 
 class KeyTakeawaysWidget extends StatelessWidget {
   final List<String> strengths;
@@ -24,7 +25,7 @@ class KeyTakeawaysWidget extends StatelessWidget {
       children: [
         _buildSection(
           context,
-          title: 'Strengths',
+          title: AppStrings.of(context).strengths,
           items: strengths,
           icon: Icons.check_circle_rounded,
           color: Colors.green,
@@ -33,7 +34,7 @@ class KeyTakeawaysWidget extends StatelessWidget {
         const SizedBox(height: 16),
         _buildSection(
           context,
-          title: 'Growth Areas',
+          title: AppStrings.of(context).growthAreas,
           items: growthAreas,
           icon: Icons.trending_up,
           color: Colors.orange,
@@ -105,7 +106,7 @@ class KeyTakeawaysWidget extends StatelessWidget {
           const SizedBox(height: 16),
           if (items.isEmpty)
             Text(
-              'None identified',
+              AppStrings.of(context).noneIdentified,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 color: Colors.grey,
                 fontStyle: FontStyle.italic,

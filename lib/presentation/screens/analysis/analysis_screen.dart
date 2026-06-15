@@ -13,6 +13,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:intl/intl.dart';
 import '../chat/chat_screen.dart';
 import '../../widgets/offline_banner.dart';
+import '../../../../core/l10n/app_strings.dart';
 
 // Widgets
 import 'widgets/hero_score.dart';
@@ -106,13 +107,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
   void _copyAllFeedback() {
     if (_analysis == null) return;
     final buf = StringBuffer();
-    buf.writeln('LESSON ANALYSIS');
+    buf.writeln(AppStrings.of(context).lessonAnalysis.toUpperCase());
     buf.writeln('Lesson: ${_recording?.title ?? _analysis!.id}');
     buf.writeln('Date:   ${DateFormat("MMMM d, yyyy").format(_analysis!.createdAt)}');
     buf.writeln();
 
     if (_analysis!.strengths.isNotEmpty) {
-      buf.writeln('STRENGTHS');
+      buf.writeln(AppStrings.of(context).strengths.toUpperCase());
       for (final s in _analysis!.strengths) {
         buf.writeln('\u2022 $s');
       }
@@ -120,7 +121,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
 
     if (_analysis!.areasForImprovement.isNotEmpty) {
-      buf.writeln('AREAS FOR IMPROVEMENT');
+      buf.writeln(AppStrings.of(context).areasForImprovement.toUpperCase());
       for (final a in _analysis!.areasForImprovement) {
         buf.writeln('\u2022 $a');
       }
@@ -128,7 +129,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     }
 
     if (_analysis!.recommendations.isNotEmpty) {
-      buf.writeln('RECOMMENDATIONS');
+      buf.writeln(AppStrings.of(context).recommendations.toUpperCase());
       for (int i = 0; i < _analysis!.recommendations.length; i++) {
         final r = _analysis!.recommendations[i];
         buf.writeln('${i + 1}. ${r.title}');
@@ -139,9 +140,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
     Clipboard.setData(ClipboardData(text: buf.toString()));
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Analysis copied to clipboard'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(AppStrings.of(context).analysisCopied),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -230,22 +231,22 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       case 'too_short':
         bannerColor = const Color(0xFFFF6D00); // deep orange
         bannerIcon  = Icons.timer_off_rounded;
-        bannerTitle = 'Short Recording';
+        bannerTitle = AppStrings.of(context).shortRecording;
         break;
       case 'limited_teaching':
         bannerColor = const Color(0xFFF9A825); // amber
         bannerIcon  = Icons.school_outlined;
-        bannerTitle = 'Limited Teaching Activity Detected';
+        bannerTitle = AppStrings.of(context).limitedTeachingActivity;
         break;
       case 'poor_audio':
         bannerColor = const Color(0xFFD32F2F); // red
         bannerIcon  = Icons.mic_off_rounded;
-        bannerTitle = 'Low Audio Quality';
+        bannerTitle = AppStrings.of(context).lowAudioQuality;
         break;
       default:
         bannerColor = const Color(0xFF1565C0); // blue
         bannerIcon  = Icons.info_outline_rounded;
-        bannerTitle = 'Analysis Note';
+        bannerTitle = AppStrings.of(context).analysisNote;
     }
 
     return AnimatedContainer(
@@ -295,7 +296,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     if (_analysis == null) {
       return Scaffold(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        appBar: AppBar(title: const Text('Analysis'), backgroundColor: Colors.transparent),
+        appBar: AppBar(title: Text(AppStrings.of(context).analysis), backgroundColor: Colors.transparent),
         body: Center(child: CircularProgressIndicator(color: Theme.of(context).primaryColor)),
       );
     }
@@ -306,7 +307,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          'Lesson Analysis',
+          AppStrings.of(context).lessonAnalysis,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : AppTheme.textMain
@@ -316,6 +317,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
+          tooltip: AppStrings.of(context).back,
           icon: Icon(Icons.arrow_back_ios_new, size: 20, color: isDark ? Colors.white : AppTheme.textMain),
           onPressed: () => Navigator.pop(context),
         ),
@@ -323,7 +325,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           IconButton(
             icon: Icon(Icons.copy_all_rounded, size: 20,
                 color: isDark ? Colors.white70 : AppTheme.textSub),
-            tooltip: 'Copy all feedback',
+            tooltip: AppStrings.of(context).copyAllFeedback,
             onPressed: _copyAllFeedback,
           ),
         ],
@@ -352,7 +354,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     HeroScore(
                       score: _analysis!.overallScore ?? 0.0,
                       date: DateFormat('MMMM d, yyyy').format(_analysis!.createdAt),
-                      title: _recording?.title ?? 'Untitled Lesson',
+                      title: _recording?.title ?? AppStrings.of(context).untitledLesson,
                     ),
               const SizedBox(height: 32),
               
@@ -361,7 +363,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               const SizedBox(height: 32),
 
               // 2. Key Takeaways
-              _buildSectionTitle('KEY TAKEAWAYS', isDark),
+              _buildSectionTitle(AppStrings.of(context).keyTakeaways, isDark),
               const SizedBox(height: 16),
               KeyTakeawaysWidget(
                 strengths: _analysis!.strengths,
@@ -373,13 +375,13 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               const SizedBox(height: 32),
 
               // 2.5 Transcript Placeholder
-              _buildSectionTitle('TRANSCRIPT', isDark),
+              _buildSectionTitle(AppStrings.of(context).transcript, isDark),
               const SizedBox(height: 16),
               _buildTranscriptPlaceholder(isDark),
               const SizedBox(height: 32),
 
               // 3. TEACH Framework
-              _buildSectionTitle('TEACH FRAMEWORK', isDark),
+              _buildSectionTitle(AppStrings.of(context).teachFramework, isDark),
               const SizedBox(height: 16),
               TeachGridWidget(
                 analysis: _analysis!,
@@ -389,7 +391,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
 
               // 4. Science of Learning
               if (_analysis!.scienceOfLearning != null) ...[
-                _buildSectionTitle('SCIENCE OF LEARNING', isDark),
+                _buildSectionTitle(AppStrings.of(context).scienceOfLearning, isDark),
                 const SizedBox(height: 16),
                 _buildScienceOfLearning(isDark),
                 const SizedBox(height: 32),
@@ -437,8 +439,8 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             );
           }
         },
-        icon: Icon(Icons.support_agent_rounded),
-        label: const Text('Talk to Coach'),
+        icon: const Icon(Icons.support_agent_rounded),
+        label: Text(AppStrings.of(context).talkToCoach),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         elevation: 2,
@@ -479,7 +481,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Coming Soon',
+                  AppStrings.of(context).comingSoon,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -488,7 +490,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Transcripts will be available in a future update.',
+                  AppStrings.of(context).transcriptComingSoon,
                   style: TextStyle(
                     fontSize: 14,
                     color: isDark ? Colors.blue.shade100 : Colors.blue.shade800,
@@ -522,6 +524,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
+              tooltip: _isPlaying ? 'Pause audio' : 'Play audio',
               icon: Icon(_isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded),
               color: Theme.of(context).primaryColor,
               iconSize: 32,
@@ -559,7 +562,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Lesson Audio',
+                  AppStrings.of(context).lessonAudio,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: isDark ? Colors.white : AppTheme.textMain
@@ -616,11 +619,11 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
     final sol = _analysis!.scienceOfLearning!;
     return Column(
       children: [
-        _buildScienceCard('Clarity & Cognitive Load', sol.clarityAndCognitiveLoad, isDark),
+        _buildScienceCard(AppStrings.of(context).clarityAndCognitiveLoad, sol.clarityAndCognitiveLoad, isDark),
         const SizedBox(height: 12),
-        _buildScienceCard('Engagement & Retrieval', sol.engagementAndRetrieval, isDark),
+        _buildScienceCard(AppStrings.of(context).engagementAndRetrieval, sol.engagementAndRetrieval, isDark),
         const SizedBox(height: 12),
-        _buildScienceCard('Feedback & Metacognition', sol.feedbackAndMetacognition, isDark),
+        _buildScienceCard(AppStrings.of(context).feedbackAndMetacognition, sol.feedbackAndMetacognition, isDark),
       ],
     );
   }
@@ -655,6 +658,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               IconButton(
+                tooltip: _isSpeaking && _currentlySpeakingSection == 'science_$title' ? 'Stop speaking' : 'Speak feedback',
                 icon: Icon(
                   _isSpeaking && _currentlySpeakingSection == 'science_$title'
                       ? Icons.stop_circle_outlined
@@ -679,9 +683,9 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
           children: [
             Divider(height: 1, color: isDark ? Colors.grey[700] : Colors.grey[200]),
             const SizedBox(height: 16),
-            _buildScienceRow('PROS', area.pros, Colors.green, isDark),
+            _buildScienceRow(AppStrings.of(context).pros, area.pros, Colors.green, isDark),
             const SizedBox(height: 16),
-            _buildScienceRow('CONS', area.cons, Colors.orange, isDark),
+            _buildScienceRow(AppStrings.of(context).cons, area.cons, Colors.orange, isDark),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -696,7 +700,7 @@ class _AnalysisScreenState extends State<AnalysisScreen> {
                     children: [
                       Icon(Icons.tips_and_updates, size: 16, color: Colors.blue.shade500),
                       const SizedBox(width: 8),
-                      Text('COACH FEEDBACK', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade500, fontSize: 12)),
+                      Text(AppStrings.of(context).coachFeedback, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade500, fontSize: 12)),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -889,12 +893,12 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
                             const SizedBox(height: 4),
                             Text(
                               effectiveScore >= 4
-                                  ? 'Strong'
+                                  ? AppStrings.of(context).scoreStrong
                                   : effectiveScore >= 3
-                                      ? 'Good'
+                                      ? AppStrings.of(context).scoreGood
                                       : effectiveScore >= 2
-                                          ? 'Developing'
-                                          : 'Needs Focus',
+                                          ? AppStrings.of(context).scoreDeveloping
+                                          : AppStrings.of(context).scoreNeedsFocus,
                               style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
@@ -936,7 +940,7 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
                         children: [
                           Icon(Icons.info_outline_rounded, color: Theme.of(context).primaryColor),
                           const SizedBox(width: 12),
-                          Text('Rationale', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppTheme.textMain)),
+                          Text(AppStrings.of(context).rationale, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: isDark ? Colors.white : AppTheme.textMain)),
                         ],
                       ),
                       IconButton(
@@ -1042,9 +1046,9 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
                             size: 20,
                           ),
                           onPressed: () {
-                            String textToRead = "Rating: ${behavior.rating}. ";
+                            String textToRead = "${AppStrings.of(context).rating}: ${behavior.rating}. ";
                             if (behavior.instancesFound.isNotEmpty) {
-                              textToRead += "Evidence found: ${behavior.instancesFound.join('. ')}";
+                              textToRead += "${AppStrings.of(context).evidenceFound}: ${behavior.instancesFound.join('. ')}";
                             } else {
                               textToRead += behavior.evidence;
                             }
@@ -1149,7 +1153,7 @@ class _ElementDetailScreenState extends State<ElementDetailScreen> {
 
   Widget _buildChip(String label, bool isDark) {
     final isSelected = _selectedBehavior == label;
-    final displayLabel = label == 'All' ? 'All' : label.replaceAll('_', ' ');
+    final displayLabel = label == 'All' ? AppStrings.of(context).all : label.replaceAll('_', ' ');
     return Container(
       margin: const EdgeInsets.only(right: 8),
       child: ChoiceChip(
@@ -1244,7 +1248,7 @@ class _NotObservedCard extends StatelessWidget {
     final tip = _behaviorTips[behaviorKey] ??
         (rationaleOk
             ? rationale
-            : 'Talk to your AI coach for concrete strategies and classroom examples for this behavior.');
+            : AppStrings.of(context).askCoachTip);
     final behaviorLabel = behaviorKey.replaceAll('_', ' ');
     final coachQuestion =
         'Can you give me concrete examples of how to implement "$behaviorLabel" in my classroom? What does it look like in practice?';
@@ -1257,7 +1261,7 @@ class _NotObservedCard extends StatelessWidget {
             const Icon(Icons.visibility_off_outlined, size: 16, color: Colors.grey),
             const SizedBox(width: 6),
             Text(
-              'Not observed in this lesson',
+              AppStrings.of(context).notObserved,
               style: TextStyle(
                 color: isDark ? Colors.grey[400] : Colors.grey[600],
                 fontSize: 13,
@@ -1284,7 +1288,7 @@ class _NotObservedCard extends StatelessWidget {
                   const Text('\u{1F4A1}', style: TextStyle(fontSize: 15)),
                   const SizedBox(width: 8),
                   Text(
-                    'Try This',
+                    AppStrings.of(context).tryThis,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 13,
@@ -1321,7 +1325,7 @@ class _NotObservedCard extends StatelessWidget {
               );
             },
             icon: const Icon(Icons.chat_bubble_outline_rounded, size: 16),
-            label: const Text('Ask the Coach →'),
+            label: Text(AppStrings.of(context).askTheCoach),
             style: OutlinedButton.styleFrom(
               foregroundColor: Theme.of(context).primaryColor,
               side: BorderSide(color: Theme.of(context).primaryColor.withValues(alpha: 0.4)),

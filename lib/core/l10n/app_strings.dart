@@ -149,6 +149,7 @@ class AppStrings {
   String get discard => _t('discard');
   String get lockTooltip => _t('lockTooltip');
   String get unlockTooltip => _t('unlockTooltip');
+  String get screenLocked => _t('screenLocked');
 
   // ── Home / Recording — Review ─────────────────────────────────────────────
   String get reviewRecording => _t('reviewRecording');
@@ -237,6 +238,17 @@ class AppStrings {
   String get evidence => _t('evidence');
   String get behaviorFilter => _t('behaviorFilter');
   String get askCoachAbout => _t('askCoachAbout');
+  String get scoreStrong => _t('scoreStrong');
+  String get scoreGood => _t('scoreGood');
+  String get scoreDeveloping => _t('scoreDeveloping');
+  String get scoreNeedsFocus => _t('scoreNeedsFocus');
+  String get rationale => _t('rationale');
+  String get notObserved => _t('notObserved');
+  String get tryThis => _t('tryThis');
+  String get askTheCoach => _t('askTheCoach');
+  String get askCoachTip => _t('askCoachTip');
+  String get rating => _t('rating');
+  String get evidenceFound => _t('evidenceFound');
 
   // ── Chat Screen ───────────────────────────────────────────────────────────
   String get aiCoach => _t('aiCoach');
@@ -295,9 +307,13 @@ class AppStrings {
   String get verificationCode => _t('verificationCode');
   String get resendCode => _t('resendCode');
   String get emailVerified => _t('emailVerified');
+  String get verifyYourEmail => _t('verifyYourEmail');
+  String get tapToSecureAccount => _t('tapToSecureAccount');
+  String get verifyButton => _t('verifyButton');
 
   // ── Recording Screen ──────────────────────────────────────────────────────
   String get recordLesson => _t('recordLesson');
+  String get newRecording => _t('newRecording');
 
   // ── Local Draft Detail ────────────────────────────────────────────────────
   String get localDraft => _t('localDraft');
@@ -310,6 +326,48 @@ class AppStrings {
   String get langFrench => _t('langFrench');
   String get langAmharic => _t('langAmharic');
   String get langSwahili => _t('langSwahili');
+
+  // ── Analysis UI Labels ────────────────────────────────────────────────────
+  String get notObservedSection => _t('notObservedSection');
+  String tapToViewElements(int count) =>
+      _t('tapToViewElements').replaceFirst('{count}', '$count');
+  String get noneIdentified => _t('noneIdentified');
+  String get growthAreas => _t('growthAreas');
+  String get nextSteps => _t('nextSteps');
+  String get example => _t('example');
+  String get domainClassroomCulture => _t('domainClassroomCulture');
+  String get domainInstruction => _t('domainInstruction');
+  String get domainSocioemotionalSkills => _t('domainSocioemotionalSkills');
+  String get clarityAndCognitiveLoad => _t('clarityAndCognitiveLoad');
+  String get engagementAndRetrieval => _t('engagementAndRetrieval');
+  String get feedbackAndMetacognition => _t('feedbackAndMetacognition');
+
+  // ── Local Draft Detail Screen ──────────────────────────────────────────────
+  String get draftSectionLessonDetails => _t('draftSectionLessonDetails');
+  String get draftSectionLessonAudio => _t('draftSectionLessonAudio');
+  String get draftSectionAnalysis => _t('draftSectionAnalysis');
+  String get draftInfoTitle => _t('draftInfoTitle');
+  String get draftInfoSubject => _t('draftInfoSubject');
+  String get draftInfoGrade => _t('draftInfoGrade');
+  String get draftInfoRecorded => _t('draftInfoRecorded');
+  String get draftInfoDuration => _t('draftInfoDuration');
+  String get draftInfoNotes => _t('draftInfoNotes');
+  String get draftStatusSavedLocally => _t('draftStatusSavedLocally');
+  String get draftStatusPending => _t('draftStatusPending');
+  String get draftStatusFailed => _t('draftStatusFailed');
+  String get draftStatusTooShort => _t('draftStatusTooShort');
+  String draftUploadFailed(String error) => _t('draftUploadFailed').replaceFirst('{error}', error);
+  String get draftUploadedAnalyzing => _t('draftUploadedAnalyzing');
+  String get draftAnalysisRetriggered => _t('draftAnalysisRetriggered');
+  String get draftRetryAnalysis => _t('draftRetryAnalysis');
+  String get draftUploadingWait => _t('draftUploadingWait');
+  String get draftStarting => _t('draftStarting');
+  String get draftUploadInProgress => _t('draftUploadInProgress');
+  String get draftIfKeepsFailing => _t('draftIfKeepsFailing');
+  String get draftNoInternet => _t('draftNoInternet');
+  String get draftNoInternetDetail => _t('draftNoInternetDetail');
+  String get draftDataPersistenceNotice => _t('draftDataPersistenceNotice');
+  String get draftLessonAudioLabel => _t('draftLessonAudioLabel');
 }
 
 // ── Localizations Delegate ────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/user.dart';
 import '../screens/auth/email_verification_screen.dart';
+import '../../core/l10n/app_strings.dart';
 
 class VerificationBanner extends StatelessWidget {
   final User user;
@@ -49,7 +50,7 @@ class VerificationBanner extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Verify your email',
+                      AppStrings.of(context).verifyYourEmail,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
@@ -57,7 +58,7 @@ class VerificationBanner extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Tap to secure your account',
+                      AppStrings.of(context).tapToSecureAccount,
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.orange.shade700,
@@ -84,7 +85,7 @@ class VerificationBanner extends StatelessWidget {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: const Text('Verify', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                child: Text(AppStrings.of(context).verifyButton, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
               ),
             ],
           ),

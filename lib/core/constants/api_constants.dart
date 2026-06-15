@@ -1,8 +1,6 @@
 class ApiConstants {
-  // Base URL - Change this to your backend URL
-  // static const String baseUrl = 'http://localhost:8080';
-  // static const String baseUrl = 'http://192.168.1.17:8080';
-  static const String baseUrl = 'http://34.10.248.60:8080';
+
+  static const String baseUrl = 'https://coach.senecole.com';
   
   // API version
   static const String apiVersion = 'v1';

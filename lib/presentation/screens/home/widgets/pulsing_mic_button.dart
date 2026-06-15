@@ -40,9 +40,12 @@ class _PulsingMicButtonState extends State<PulsingMicButton>
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: widget.onTap,
-      child: Column(
+    return Semantics(
+      button: true,
+      label: 'Start recording',
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           SizedBox(
@@ -144,6 +147,7 @@ class _PulsingMicButtonState extends State<PulsingMicButton>
             ),
           ],
         ],
+      ),
       ),
     );
   }

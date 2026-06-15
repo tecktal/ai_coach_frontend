@@ -106,7 +106,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     if (value == null) return;
                     setState(() => _countryController.text = value);
                     // Auto-switch app language based on selected country.
-                    context.read<LocaleProvider>().setLocaleFromCountry(value);
+                    // context.read<LocaleProvider>().setLocaleFromCountry(value);
                   },
                 ),
                 const SizedBox(height: 16),
@@ -174,6 +174,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     labelText: AppStrings.of(context).password,
                     prefixIcon: const Icon(Icons.lock),
                     suffixIcon: IconButton(
+                      tooltip: 'Toggle password visibility',
                       icon: Icon(
                         _obscurePassword
                             ? Icons.visibility
@@ -200,9 +201,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: _schoolController,
                   decoration: InputDecoration(
-                    labelText: AppStrings.of(context).schoolNameOptional,
+                    labelText: AppStrings.of(context).schoolName,
                     prefixIcon: const Icon(Icons.school),
                   ),
+                  validator: (value) {
+                    if (value == null || value.trim().isEmpty) {
+                      return AppStrings.of(context).enterSchoolName;
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 24),
 

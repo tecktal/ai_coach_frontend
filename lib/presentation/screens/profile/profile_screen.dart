@@ -10,6 +10,7 @@ import '../../../core/theme/app_theme.dart';
 import '../auth/login_screen.dart';
 import '../../widgets/verification_banner.dart';
 import '../../widgets/country_dropdown.dart';
+import '../../widgets/country_customization.dart';
 import '../../widgets/offline_banner.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -28,16 +29,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     final firstNameCtrl = TextEditingController(text: user?.firstName ?? '');
     final lastNameCtrl = TextEditingController(text: user?.lastName ?? '');
+    final emailCtrl = TextEditingController(text: user?.email ?? '');
     final schoolNameCtrl = TextEditingController(text: user?.schoolName ?? '');
     final countryCtrl = TextEditingController(text: user?.country ?? '');
     final formKey = GlobalKey<FormState>();
+    String selectedLanguage = localeProvider.languageCode;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) {
-        return Padding(
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            return Padding(
           padding: EdgeInsets.only(
             bottom: MediaQuery.of(sheetCtx).viewInsets.bottom,
           ),
@@ -80,7 +85,36 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       if (val != null) {
                         countryCtrl.text = val;
                         // Auto-switch app language when country changes.
+                        final code = CountryCustomization.getLanguageCode(val);
+                        setSheetState(() => selectedLanguage = code);
                         localeProvider.setLocaleFromCountry(val);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<String>(
+                    value: selectedLanguage,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).language,
+                      prefixIcon: const Icon(Icons.language_rounded),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'en', child: Text('English')),
+                      DropdownMenuItem(value: 'fr', child: Text('Français')),
+                      DropdownMenuItem(value: 'pt', child: Text('Português')),
+                      DropdownMenuItem(value: 'sw', child: Text('Kiswahili')),
+                      DropdownMenuItem(value: 'am', child: Text('አማርኛ')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setSheetState(() => selectedLanguage = val);
+                        localeProvider.setLocale(val);
                       }
                     },
                   ),
@@ -118,6 +152,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextFormField(
+                    controller: emailCtrl,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.of(context).emailOptional,
+                      prefixIcon: Icon(Icons.email_outlined),
+                      filled: true,
+                      fillColor: isDark ? const Color(0xFF0F172A) : Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    keyboardType: TextInputType.emailAddress,
+                    validator: (v) {
+                      if (v != null && v.isNotEmpty && !v.contains('@')) {
+                        return AppStrings.of(context).enterEmail;
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
                     controller: schoolNameCtrl,
                     decoration: InputDecoration(
                       labelText: AppStrings.of(context).school,
@@ -129,6 +184,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         borderSide: BorderSide.none,
                       ),
                     ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? AppStrings.of(context).enterSchoolName : null,
                   ),
                   const SizedBox(height: 24),
                   Consumer<AuthProvider>(
@@ -141,9 +198,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 final success = await auth.updateProfile(
                                   firstName: firstNameCtrl.text.trim(),
                                   lastName: lastNameCtrl.text.trim(),
+                                  email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
                                   schoolName: schoolNameCtrl.text.trim().isEmpty ? null : schoolNameCtrl.text.trim(),
                                   country: countryCtrl.text.trim().isEmpty ? null : countryCtrl.text.trim(),
-                                  languagePreference: localeProvider.languageCode,
+                                  languagePreference: selectedLanguage,
                                 );
                                 if (!sheetCtx.mounted) return;
                                 Navigator.pop(sheetCtx);
@@ -187,6 +245,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
           ),
+        );
+          },
         );
       },
     );
@@ -271,6 +331,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             prefixIcon:
                                 const Icon(Icons.lock_outline_rounded),
                             suffixIcon: IconButton(
+                              tooltip: 'Toggle password visibility',
                               icon: Icon(showCurrent
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined),
@@ -300,6 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             labelText: AppStrings.of(context).newPassword,
                             prefixIcon: const Icon(Icons.lock_reset_rounded),
                             suffixIcon: IconButton(
+                              tooltip: 'Toggle password visibility',
                               icon: Icon(showNew
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined),
@@ -337,6 +399,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             prefixIcon:
                                 const Icon(Icons.check_circle_outline),
                             suffixIcon: IconButton(
+                              tooltip: 'Toggle password visibility',
                               icon: Icon(showConfirm
                                   ? Icons.visibility_off_outlined
                                   : Icons.visibility_outlined),
@@ -494,16 +557,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                         ),
                         const SizedBox(width: 8),
-                        GestureDetector(
-                          onTap: () => _showEditNameSheet(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
+                        Semantics(
+                          button: true,
+                          label: 'Edit Profile',
+                          child: GestureDetector(
+                            onTap: () => _showEditNameSheet(context),
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.edit_outlined,
+                                  size: 16, color: Theme.of(context).primaryColor),
                             ),
-                            child: Icon(Icons.edit_outlined,
-                                size: 16, color: Theme.of(context).primaryColor),
                           ),
                         ),
                       ],

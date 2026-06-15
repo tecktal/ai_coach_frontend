@@ -9,6 +9,8 @@ import '../../../data/services/api_service.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../widgets/offline_banner.dart';
 import '../../widgets/app_toast.dart';
+import '../../../core/l10n/app_strings.dart';
+
 
 /// Shown when a teacher taps a lesson that needs action:
 ///   • Local draft (not yet uploaded)
@@ -110,12 +112,12 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
         await ApiService().analyzeRecording(recording.id);
         provider.startPollingIfNeeded();
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) setState(() => _isTriggering = false);
       if (mounted) {
         AppToast.show(
           context,
-          message: 'Upload failed. Please check your connection and retry.',
+          message: AppStrings.of(context).draftUploadFailed(e.toString()),
           type: ToastType.error,
           duration: const Duration(seconds: 4),
         );
@@ -128,8 +130,8 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
     AppToast.show(
       context,
       message: recording.isLocalDraft
-          ? 'Lesson uploaded. Analysis is running in the background.'
-          : 'Analysis re-triggered. Check My Lessons for progress.',
+          ? AppStrings.of(context).draftUploadedAnalyzing
+          : AppStrings.of(context).draftAnalysisRetriggered,
       type: ToastType.info,
       duration: const Duration(seconds: 4),
     );
@@ -154,7 +156,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: Text(
-          recording.title ?? 'Untitled Lesson',
+          recording.title ?? AppStrings.of(context).untitledLesson,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: isDark ? Colors.white : AppTheme.textMain,
@@ -164,6 +166,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
+          tooltip: AppStrings.of(context).back,
           icon: Icon(Icons.arrow_back_ios_new,
               size: 20, color: isDark ? Colors.white : AppTheme.textMain),
           onPressed: () => Navigator.pop(context),
@@ -184,43 +187,43 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
                   const SizedBox(height: 28),
 
                   // ── Lesson metadata ─────────────────────────────────────
-                  _buildSectionLabel('LESSON DETAILS', isDark),
+                  _buildSectionLabel(AppStrings.of(context).draftSectionLessonDetails, isDark),
                   const SizedBox(height: 12),
                   _buildInfoCard(isDark, [
                     _InfoRow(
                       icon: Icons.title_rounded,
-                      label: 'Title',
-                      value: recording.title ?? 'Untitled Lesson',
+                      label: AppStrings.of(context).draftInfoTitle,
+                      value: recording.title ?? AppStrings.of(context).untitledLesson,
                     ),
                     if (recording.subject != null)
                       _InfoRow(
                         icon: Icons.school_rounded,
-                        label: 'Subject',
+                        label: AppStrings.of(context).draftInfoSubject,
                         value: recording.subject!,
                       ),
                     if (recording.gradeLevel != null)
                       _InfoRow(
                         icon: Icons.grade_rounded,
-                        label: 'Grade',
+                        label: AppStrings.of(context).draftInfoGrade,
                         value: recording.gradeLevel!,
                       ),
                     _InfoRow(
                       icon: Icons.calendar_today_rounded,
-                      label: 'Recorded',
+                      label: AppStrings.of(context).draftInfoRecorded,
                       value: DateFormat('MMM d, yyyy – HH:mm')
                           .format(recording.createdAt),
                     ),
                     if (recording.durationSeconds != null)
                       _InfoRow(
                         icon: Icons.timer_rounded,
-                        label: 'Duration',
+                        label: AppStrings.of(context).draftInfoDuration,
                         value: recording.durationDisplay,
                       ),
                     if (recording.description != null &&
                         recording.description!.isNotEmpty)
                       _InfoRow(
                         icon: Icons.notes_rounded,
-                        label: 'Notes',
+                        label: AppStrings.of(context).draftInfoNotes,
                         value: recording.description!,
                       ),
                   ]),
@@ -228,14 +231,14 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
                   const SizedBox(height: 28),
 
                   // ── Audio player ────────────────────────────────────────
-                  _buildSectionLabel('LESSON AUDIO', isDark),
+                  _buildSectionLabel(AppStrings.of(context).draftSectionLessonAudio, isDark),
                   const SizedBox(height: 12),
                   _buildAudioPlayer(isDark),
 
                   const SizedBox(height: 32),
 
                   // ── Analysis CTA ────────────────────────────────────────
-                  _buildSectionLabel('ANALYSIS', isDark),
+                  _buildSectionLabel(AppStrings.of(context).draftSectionAnalysis, isDark),
                   const SizedBox(height: 12),
 
                   // Drive disabled state from the provider so it survives
@@ -257,8 +260,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: Text(
-                              'Upload in progress — you can safely leave this screen. '  
-                              'The analysis will continue in the background.',
+                              AppStrings.of(context).draftUploadInProgress,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 12,
@@ -274,8 +276,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
                           Padding(
                             padding: const EdgeInsets.only(top: 12),
                             child: Text(
-                              'If it keeps failing, wait a few minutes and try again. '
-                              'Your recording is safely stored and will not be lost.',
+                              AppStrings.of(context).draftIfKeepsFailing,
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 12,
@@ -380,6 +381,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
               shape: BoxShape.circle,
             ),
             child: IconButton(
+              tooltip: _isPlaying ? 'Pause audio' : 'Play audio',
               icon: Icon(_isPlaying
                   ? Icons.pause_rounded
                   : Icons.play_arrow_rounded),
@@ -394,7 +396,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Lesson Audio',
+                  AppStrings.of(context).draftLessonAudioLabel,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: isDark ? Colors.white : AppTheme.textMain,
@@ -458,16 +460,16 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
 
   String _actionButtonLabel() {
     if (widget.recording.isFailed || widget.recording.isInsufficientAudio) {
-      return 'Retry Analysis';
+      return AppStrings.of(context).draftRetryAnalysis;
     }
-    return 'Run Analysis';
+    return AppStrings.of(context).runAnalysis;
   }
 
   Widget _buildStatusBanner(bool isDark) {
     if (widget.recording.isFailed || widget.recording.isInsufficientAudio) {
       final msg = widget.recording.isInsufficientAudio
-          ? 'The recording was too short for a full analysis. Make sure your lesson recording is at least 1 minute of actual teaching.'
-          : 'The AI analysis didn\'t complete this time — this is usually a temporary issue and your recording is safe. Try again below, or come back in a few minutes.';
+          ? AppStrings.of(context).draftStatusTooShort
+          : AppStrings.of(context).draftStatusFailed;
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(14),
@@ -506,7 +508,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
             Icon(Icons.hourglass_top_rounded, color: Colors.orange.shade700, size: 20),
             const SizedBox(width: 12),
             Expanded(
-              child: Text('Lesson uploaded but analysis has not started yet. Tap Run Analysis below.',
+              child: Text(AppStrings.of(context).draftStatusPending,
                   style: TextStyle(
                       fontSize: 13,
                       color: isDark ? Colors.orange.shade300 : Colors.orange.shade800,
@@ -532,7 +534,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'This lesson is saved locally and has not been analysed yet.',
+              AppStrings.of(context).draftStatusSavedLocally,
               style: TextStyle(
                 fontSize: 13,
                 color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
@@ -548,9 +550,9 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
   Widget _buildRunAnalysisButton(bool isDark, bool isDisabled, bool isUploading) {
     final String label;
     if (isUploading) {
-      label = 'Uploading… Please wait';
+      label = AppStrings.of(context).draftUploadingWait;
     } else if (isDisabled) {
-      label = 'Starting…';
+      label = AppStrings.of(context).draftStarting;
     } else {
       label = _actionButtonLabel();
     }
@@ -599,7 +601,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'No internet connection',
+                  AppStrings.of(context).draftNoInternet,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 15,
@@ -608,7 +610,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Connect to the internet, then tap the button below to run the analysis.',
+                  AppStrings.of(context).draftNoInternetDetail,
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.orange.shade800,
@@ -647,9 +649,7 @@ class _LocalDraftDetailScreenState extends State<LocalDraftDetailScreen> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'Once you run the analysis, your audio is uploaded to our server. '
-              'You can safely delete it from your phone — your feedback, scores, '
-              'and chat history will remain in the app.',
+              AppStrings.of(context).draftDataPersistenceNotice,
               style: TextStyle(
                 fontSize: 12,
                 height: 1.5,

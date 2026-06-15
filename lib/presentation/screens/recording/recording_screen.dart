@@ -9,6 +9,7 @@ import '../../../data/providers/auth_provider.dart';
 import '../../../data/providers/connectivity_provider.dart';
 import '../../../data/services/file_storage_service.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../core/l10n/app_strings.dart';
 
 class RecordingScreen extends StatefulWidget {
   const RecordingScreen({super.key});
@@ -177,9 +178,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
     setState(() => _isSaving = false);
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('📱 Lesson saved. Open it in My Lessons to analyse later.'),
-        duration: Duration(seconds: 4),
+      SnackBar(
+        content: Text(AppStrings.of(context).lessonSaved),
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -200,11 +201,8 @@ class _RecordingScreenState extends State<RecordingScreen> {
       final saveLater = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('No internet connection'),
-          content: const Text(
-            'You need internet to run the analysis.\n\n'
-            'Would you like to save this lesson locally and analyse it later?',
-          ),
+          title: Text(AppStrings.of(context).noInternetTitle),
+          content: Text(AppStrings.of(context).noInternetAnalysis),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -252,9 +250,9 @@ class _RecordingScreenState extends State<RecordingScreen> {
     // Step 2 — Navigate to My Lessons where the draft is already visible.
     Navigator.of(context).pop();
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Uploading for analysis. Check My Lessons for progress.'),
-        duration: Duration(seconds: 4),
+      SnackBar(
+        content: Text(AppStrings.of(context).uploadingForAnalysis),
+        duration: const Duration(seconds: 4),
       ),
     );
 
@@ -277,7 +275,7 @@ class _RecordingScreenState extends State<RecordingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'New Recording',
+          AppStrings.of(context).newRecording,
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.bold,
             color: isDark ? Colors.white : AppTheme.textMain,

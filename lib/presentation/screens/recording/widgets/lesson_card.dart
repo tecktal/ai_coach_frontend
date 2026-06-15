@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../data/models/recording.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/l10n/app_strings.dart';
 
 class LessonCard extends StatelessWidget {
   final Recording recording;
@@ -117,9 +118,9 @@ class LessonCard extends StatelessWidget {
                               color: const Color(0xFF64748B).withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(6),
                             ),
-                            child: const Text(
-                              'Local Draft',
-                              style: TextStyle(
+                            child: Text(
+                              AppStrings.of(context).localDraft,
+                              style: const TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF64748B),
@@ -128,7 +129,7 @@ class LessonCard extends StatelessWidget {
                           ),
                         ),
                       Text(
-                        recording.title ?? 'Untitled Lesson',
+                        recording.title ?? AppStrings.of(context).untitledLesson,
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: isDark ? Colors.white : AppTheme.textMain,
@@ -141,7 +142,7 @@ class LessonCard extends StatelessWidget {
                         children: [
                           Flexible(
                             child: Text(
-                              recording.subject ?? 'General',
+                              recording.subject ?? AppStrings.of(context).subjectOther,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                     color: isDark ? Colors.grey[400] : AppTheme.textSub,
                                     fontWeight: FontWeight.w600,
@@ -206,7 +207,7 @@ class LessonCard extends StatelessWidget {
             ),
             const SizedBox(width: 6),
             Text(
-              'Uploading…',
+              AppStrings.of(context).loading,
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
@@ -223,7 +224,7 @@ class LessonCard extends StatelessWidget {
       return _badge(
         context,
         icon: Icons.cloud_upload_outlined,
-        label: 'Not uploaded',
+        label: AppStrings.of(context).savedLocally,
         color: const Color(0xFF64748B),
       );
     }
@@ -236,19 +237,19 @@ class LessonCard extends StatelessWidget {
           color: AppTheme.warningColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 10,
               height: 10,
               child: CircularProgressIndicator(
                   strokeWidth: 2, color: AppTheme.warningColor),
             ),
-            SizedBox(width: 6),
+            const SizedBox(width: 6),
             Text(
-              'Analyzing',
-              style: TextStyle(
+              AppStrings.of(context).analysisInProgress,
+              style: const TextStyle(
                 color: AppTheme.warningColor,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -274,7 +275,7 @@ class LessonCard extends StatelessWidget {
             Icon(Icons.check_circle_outline_rounded, size: 12, color: color),
             const SizedBox(width: 4),
             Text(
-              'Analysed',
+              AppStrings.of(context).analyzed,
               style: TextStyle(
                 color: color,
                 fontWeight: FontWeight.bold,
@@ -292,7 +293,7 @@ class LessonCard extends StatelessWidget {
       return _badge(
         context,
         icon: Icons.hourglass_top_rounded,
-        label: 'Not analyzed',
+        label: AppStrings.of(context).notAnalyzed,
         color: isDark ? Colors.grey[500]! : Colors.grey.shade400,
       );
     }

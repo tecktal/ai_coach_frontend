@@ -101,8 +101,8 @@ const Map<String, String> fr = {
   'discardRecordingMessage': 'L\'enregistrement actuel sera perdu.',
   'keep': 'Conserver',
   'discard': 'Supprimer',
-  'lockTooltip': 'Verrouiller pour éviter un arrêt accidentel',
-  'unlockTooltip': 'Déverrouiller le bouton d\'arrêt',
+  'lockTooltip': 'Verrouiller l\'écran',
+  'unlockTooltip': 'Déverrouiller l\'écran',
 
   // ── Home / Recording Tab — Review ───────────────────────────────────────
   'reviewRecording': 'Réviser l\'Enregistrement',
@@ -264,4 +264,67 @@ const Map<String, String> fr = {
   'langFrench': 'Français',
   'langAmharic': 'አማርኛ',
   'langSwahili': 'Kiswahili',
+
+  // ── Element Detail ──────────────────────────────────────────────────────
+  'scoreStrong': 'Fort',
+  'scoreGood': 'Bien',
+  'scoreDeveloping': 'En développement',
+  'scoreNeedsFocus': 'À améliorer',
+  'rationale': 'Justification',
+  'notObserved': 'Non observé dans cette leçon',
+  'tryThis': 'Essayez ceci',
+  'askTheCoach': 'Demander à l\'Entraîneur →',
+  'askCoachTip': 'Parlez à votre entraîneur IA pour des stratégies concrètes et des exemples pour ce comportement.',
+  'rating': 'Note',
+  'evidenceFound': 'Preuves trouvées',
+  'screenLocked': 'Écran verrouillé',
+
+
+
+  //Email verification
+  'verifyYourEmail': 'Vérifiez votre e-mail',
+  'tapToSecureAccount': 'Appuyez pour sécuriser votre compte',
+  'verifyButton': 'Vérifier',
+  'newRecording': 'Nouvel enregistrement',
+
+  // ── Analysis UI Labels ────────────────────────────────────────────────────
+  'notObservedSection': 'NON OBSERVÉ',
+  'tapToViewElements': 'Appuyer pour voir {count} éléments',
+  'noneIdentified': 'Aucun identifié',
+  'growthAreas': 'Axes d\'amélioration',
+  'nextSteps': 'PROCHAINES ÉTAPES',
+  'example': 'EXEMPLE',
+  'domainClassroomCulture': 'Culture de Classe',
+  'domainInstruction': 'Enseignement',
+  'domainSocioemotionalSkills': 'Compétences Socio-émotionnelles',
+  'clarityAndCognitiveLoad': 'Clarté et Charge Cognitive',
+  'engagementAndRetrieval': 'Engagement et Mémorisation',
+  'feedbackAndMetacognition': 'Retour d\'information et Métacognition',
+
+  // ── Local Draft Detail Screen ──────────────────────────────────────────────
+  'draftSectionLessonDetails': 'DÉTAILS DE LA LEÇON',
+  'draftSectionLessonAudio': 'AUDIO DE LA LEÇON',
+  'draftSectionAnalysis': 'ANALYSE',
+  'draftInfoTitle': 'Titre',
+  'draftInfoSubject': 'Matière',
+  'draftInfoGrade': 'Niveau',
+  'draftInfoRecorded': 'Enregistré',
+  'draftInfoDuration': 'Durée',
+  'draftInfoNotes': 'Notes',
+  'draftStatusSavedLocally': 'Cette leçon est sauvegardée localement et n\'a pas encore été analysée.',
+  'draftStatusPending': 'Leçon téléchargée mais l\'analyse n\'a pas encore commencé. Appuyez sur Lancer l\'Analyse ci-dessous.',
+  'draftStatusFailed': 'L\'analyse IA n\'a pas été complétée cette fois — c\'est généralement un problème temporaire et votre enregistrement est en sécurité. Réessayez ci-dessous ou revenez dans quelques minutes.',
+  'draftStatusTooShort': 'L\'enregistrement était trop court pour une analyse complète. Assurez-vous que votre enregistrement dure au moins 1 minute d\'enseignement réel.',
+  'draftUploadFailed': 'Échec du téléchargement : {error}',
+  'draftUploadedAnalyzing': 'Leçon téléchargée. L\'analyse est en cours en arrière-plan.',
+  'draftAnalysisRetriggered': 'Analyse relancée. Vérifiez Mes Leçons pour la progression.',
+  'draftRetryAnalysis': 'Réessayer l\'Analyse',
+  'draftUploadingWait': 'Téléchargement… Veuillez patienter',
+  'draftStarting': 'Démarrage…',
+  'draftUploadInProgress': 'Téléchargement en cours — vous pouvez quitter cet écran en toute sécurité. L\'analyse continuera en arrière-plan.',
+  'draftIfKeepsFailing': 'Si ça continue d\'échouer, attendez quelques minutes et réessayez. Votre enregistrement est stocké en sécurité et ne sera pas perdu.',
+  'draftNoInternet': 'Pas de connexion internet',
+  'draftNoInternetDetail': 'Connectez-vous à internet puis appuyez sur le bouton ci-dessous pour lancer l\'analyse.',
+  'draftDataPersistenceNotice': 'Lorsque vous lancez l\'analyse, votre audio est téléchargé sur notre serveur. Vous pouvez le supprimer de votre téléphone en toute sécurité — vos retours, scores et historique de chat resteront dans l\'application.',
+  'draftLessonAudioLabel': 'Audio de la Leçon',
 };

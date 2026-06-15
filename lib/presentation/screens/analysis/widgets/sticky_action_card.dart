@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
+import '../../../../core/l10n/app_strings.dart';
 
 class StickyActionCard extends StatelessWidget {
   final String title;
@@ -48,7 +49,7 @@ class StickyActionCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'NEXT STEPS',
+                  AppStrings.of(context).nextSteps,
                   style: TextStyle(
                     color: Theme.of(context).primaryColor,
                     fontWeight: FontWeight.bold,
@@ -122,7 +123,7 @@ class StickyActionCard extends StatelessWidget {
                     Icon(Icons.tips_and_updates, color: Theme.of(context).primaryColor, size: 16),
                     const SizedBox(width: 8),
                     Text(
-                      'EXAMPLE',
+                      AppStrings.of(context).example,
                       style: TextStyle(
                         color: Theme.of(context).primaryColor,
                         fontWeight: FontWeight.bold,

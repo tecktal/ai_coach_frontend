@@ -108,6 +108,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   border: const OutlineInputBorder(),
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
+                    tooltip: 'Toggle password visibility',
                     icon: Icon(
                       _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
                     ),

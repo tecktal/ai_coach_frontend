@@ -254,6 +254,7 @@ class AuthProvider with ChangeNotifier {
   Future<bool> updateProfile({
     String? firstName,
     String? lastName,
+    String? email,
     String? schoolName,
     String? country,
     String? languagePreference,
@@ -266,6 +267,7 @@ class AuthProvider with ChangeNotifier {
       final data = <String, dynamic>{};
       if (firstName != null) data['first_name'] = firstName;
       if (lastName != null) data['last_name'] = lastName;
+      if (email != null) data['email'] = email;
       if (schoolName != null) data['school_name'] = schoolName;
       if (country != null) {
         data['country'] = country;

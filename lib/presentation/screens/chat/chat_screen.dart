@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_latex/flutter_markdown_latex.dart';
+import 'package:markdown/markdown.dart' as md;
 
 import '../../../data/providers/chat_provider.dart';
 import '../../../data/models/chat_message.dart';
@@ -446,6 +448,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ? Padding(
               padding: const EdgeInsets.only(bottom: 72),
               child: FloatingActionButton.small(
+                tooltip: 'Scroll to bottom',
                 onPressed: _animateToBottom,
                 backgroundColor:
                     isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -461,6 +464,7 @@ class _ChatScreenState extends State<ChatScreen> {
         scrolledUnderElevation: 0,
         backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.white,
         leading: IconButton(
+          tooltip: AppStrings.of(context).back,
           icon: Icon(Icons.arrow_back,
               color: isDark ? Colors.white : AppTheme.textMain),
           onPressed: () => Navigator.pop(context),
@@ -485,6 +489,7 @@ class _ChatScreenState extends State<ChatScreen> {
         ]),
         actions: [
           IconButton(
+            tooltip: 'More options',
             icon: Icon(Icons.more_horiz,
                 color: isDark ? Colors.white70 : AppTheme.textSub),
             onPressed: _showChatOptions,
@@ -781,23 +786,38 @@ class _ChatScreenState extends State<ChatScreen> {
           data: message.content,
           selectable: true,
           styleSheet: styleSheet,
+          builders: {
+            'latex': LatexElementBuilder(
+              textStyle: TextStyle(
+                color: textColor,
+              ),
+            ),
+          },
+          extensionSet: md.ExtensionSet(
+            [LatexBlockSyntax(), ...md.ExtensionSet.gitHubFlavored.blockSyntaxes],
+            [LatexInlineSyntax(), ...md.ExtensionSet.gitHubFlavored.inlineSyntaxes],
+          ),
         ),
 
         // Copy button
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: () => _copyMessage(message.content),
-            child: Padding(
-              padding: const EdgeInsets.only(top: 2, bottom: 2),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.copy_outlined, size: 14, color: mutedColor),
-                const SizedBox(width: 5),
-                Text(AppStrings.of(context).copy,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: mutedColor,
-                        fontWeight: FontWeight.w500)),
-              ]),
+        Semantics(
+          button: true,
+          label: AppStrings.of(context).copy,
+          child: GestureDetector(
+            onTap: () => _copyMessage(message.content),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 2, bottom: 2),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.copy_outlined, size: 14, color: mutedColor),
+                  const SizedBox(width: 5),
+                  Text(AppStrings.of(context).copy,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: mutedColor,
+                          fontWeight: FontWeight.w500)),
+                ]),
+            ),
           ),
         ),
       ]),

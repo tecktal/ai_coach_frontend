@@ -39,7 +39,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
     with WidgetsBindingObserver {
   SortOption _currentSort = SortOption.dateNewest;
   String _searchQuery = '';
-  String _selectedCategory = 'All';
+  String? _selectedCategory;
   AnalysisFilter _analysisFilter = AnalysisFilter.all;
 
   @override
@@ -86,7 +86,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
       context.read<AnalysisProvider>().loadAnalyses();
       AppToast.show(
         context,
-        message: '"${recording.title ?? 'Lesson'}" analysis is ready. Tap to view your results.',
+        message: '"${recording.title ?? AppStrings.of(context).untitledLesson}" ${AppStrings.of(context).analysisReady}',
         type: ToastType.success,
         duration: const Duration(seconds: 5),
       );
@@ -94,7 +94,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
       AppToast.show(
         context,
         message:
-            'Analysis could not be completed for "${recording.title ?? 'Lesson'}". Tap to see details.',
+            '${AppStrings.of(context).analysisCouldNotComplete} "${recording.title ?? AppStrings.of(context).untitledLesson}". ${AppStrings.of(context).tapToSeeDetails}',
         type: ToastType.error,
         duration: const Duration(seconds: 6),
       );
@@ -112,10 +112,10 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
     }).toList();
 
     // 2. Filter by Category (subject)
-    if (_selectedCategory != 'All') {
+    if (_selectedCategory != null) {
       filtered = filtered
           .where((r) => (r.subject?.toLowerCase() ?? '')
-              .contains(_selectedCategory.toLowerCase()))
+              .contains(_selectedCategory!.toLowerCase()))
           .toList();
     }
 
@@ -167,19 +167,19 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
               Padding(
                 padding: const EdgeInsets.only(left: 8.0, bottom: 16),
                 child: Text(
-                  'Sort By',
+                  AppStrings.of(context).sortBy,
                   style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
                 ),
               ),
-              _buildSortOption('Alphabetical (A-Z)', Icons.sort_by_alpha,
+              _buildSortOption(AppStrings.of(context).sortAlphabeticalAZ, Icons.sort_by_alpha,
                   SortOption.alphabeticalAZ),
-              _buildSortOption('Alphabetical (Z-A)', Icons.sort_by_alpha,
+              _buildSortOption(AppStrings.of(context).sortAlphabeticalZA, Icons.sort_by_alpha,
                   SortOption.alphabeticalZA),
-              _buildSortOption('Date (Newest First)', Icons.calendar_today,
+              _buildSortOption(AppStrings.of(context).sortDateNewest, Icons.calendar_today,
                   SortOption.dateNewest),
-              _buildSortOption('Date (Oldest First)', Icons.calendar_today,
+              _buildSortOption(AppStrings.of(context).sortDateOldest, Icons.calendar_today,
                   SortOption.dateOldest),
             ],
           ),
@@ -352,7 +352,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                                   : Colors.grey.shade200),
                         ),
                         child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
+                          child: DropdownButton<String?>(
                             value: _selectedCategory,
                             isDense: true,
                             dropdownColor: isDark
@@ -366,20 +366,23 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
                                 fontWeight: FontWeight.w600,
                                 fontSize: 13),
                             items: [
-                              AppStrings.of(context).all,
-                              AppStrings.of(context).subjectMath,
-                              AppStrings.of(context).subjectScience,
-                              AppStrings.of(context).subjectEnglish,
-                              AppStrings.of(context).subjectHistory,
-                              AppStrings.of(context).subjectArt
-                            ].map((String value) {
-                              return DropdownMenuItem<String>(
-                                  value: value, child: Text(value));
-                            }).toList(),
+                              DropdownMenuItem<String?>(
+                                value: null,
+                                child: Text(AppStrings.of(context).all),
+                              ),
+                              ...[
+                                AppStrings.of(context).subjectMath,
+                                AppStrings.of(context).subjectScience,
+                                AppStrings.of(context).subjectEnglish,
+                                AppStrings.of(context).subjectHistory,
+                                AppStrings.of(context).subjectArt
+                              ].map((String value) {
+                                return DropdownMenuItem<String?>(
+                                    value: value, child: Text(value));
+                              })
+                            ],
                             onChanged: (val) {
-                              if (val != null) {
-                                setState(() => _selectedCategory = val);
-                            }
+                              setState(() => _selectedCategory = val);
                             },
                           ),
                         ),
@@ -600,7 +603,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
 
     if (recording.isCompleted) {
       AppToast.show(context,
-          message: 'Fetching analysis details…', type: ToastType.info);
+          message: AppStrings.of(context).fetchingAnalysis, type: ToastType.info);
 
       final provider = context.read<AnalysisProvider>();
       await provider.loadAnalyses();
@@ -658,18 +661,17 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Recording?'),
-        content: const Text(
-            'This will permanently delete the recording and its analysis.'),
+        title: Text(AppStrings.of(context).deleteRecording),
+        content: Text(AppStrings.of(context).deleteRecordingMessage),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
+              child: Text(AppStrings.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style:
                 TextButton.styleFrom(foregroundColor: AppTheme.errorColor),
-            child: const Text('Delete'),
+            child: Text(AppStrings.of(context).delete),
           ),
         ],
       ),
@@ -679,7 +681,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
       await provider.deleteRecording(id);
       if (context.mounted) {
         AppToast.show(context,
-            message: 'Recording deleted.', type: ToastType.info);
+            message: AppStrings.of(context).recordingDeleted, type: ToastType.info);
       }
     }
   }
@@ -691,17 +693,15 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Analysis not started'),
-        content: const Text(
-            'This lesson was uploaded but the analysis hasn\'t started yet. '
-            'Would you like to trigger it now?'),
+        title: Text(AppStrings.of(context).analysisNotStarted),
+        content: Text(AppStrings.of(context).analysisNotStartedMessage),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel')),
+              child: Text(AppStrings.of(context).cancel)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Run Analysis'),
+            child: Text(AppStrings.of(context).runAnalysis),
           ),
         ],
       ),
@@ -713,7 +713,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
         if (context.mounted) {
           AppToast.show(
             context,
-            message: 'Analysis started. Check My Lessons for progress.',
+            message: AppStrings.of(context).analysisStarted,
             type: ToastType.success,
             duration: const Duration(seconds: 4),
           );
@@ -723,7 +723,7 @@ class _RecordingsListScreenState extends State<RecordingsListScreen>
         if (context.mounted) {
           AppToast.show(
             context,
-            message: 'Failed to start analysis. Please try again.',
+            message: AppStrings.of(context).failedToStartAnalysis,
             type: ToastType.error,
           );
         }

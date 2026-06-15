@@ -169,20 +169,8 @@ class ChatProvider with ChangeNotifier {
     final aiTempId = 'ai_${DateTime.now().millisecondsSinceEpoch}';
     String fullContent = '';
 
-    String apiContent = content;
-    if (language != null && language != 'en') {
-      String langName = 'English';
-      switch (language) {
-        case 'fr': langName = 'French'; break;
-        case 'pt': langName = 'Portuguese'; break;
-        case 'am': langName = 'Amharic'; break;
-        case 'sw': langName = 'Swahili'; break;
-      }
-      apiContent = '$content\n\n[System Instruction: Please reply in $langName]';
-    }
-
     try {
-      final stream = _api.streamChatResponse(_currentSessionId!, apiContent);
+      final stream = _api.streamChatResponse(_currentSessionId!, content);
 
       // Buffer silently — no per-chunk notifyListeners().
       //

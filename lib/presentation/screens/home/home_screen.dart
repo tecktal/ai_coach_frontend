@@ -27,6 +27,7 @@ import '../../../data/providers/connectivity_provider.dart';
 import '../recording/recordings_list_screen.dart';
 import '../chat/chats_list_screen.dart';
 import '../profile/profile_screen.dart';
+import 'package:ai_coach/core/l10n/app_strings.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -251,6 +252,19 @@ class _RecordingTabState extends State<_RecordingTab> {
     super.dispose();
   }
 
+  String _getLocalizedSubject(BuildContext context, String subjectKey) {
+    final strings = AppStrings.of(context);
+    switch (subjectKey) {
+      case 'Math': return strings.subjectMath;
+      case 'Science': return strings.subjectScience;
+      case 'English': return strings.subjectEnglish;
+      case 'History': return strings.subjectHistory;
+      case 'Art': return strings.subjectArt;
+      case 'Other': return strings.subjectOther;
+      default: return subjectKey;
+    }
+  }
+
   Future<void> _startRecording() async {
     try {
       final user = context.read<AuthProvider>().user;
@@ -315,8 +329,7 @@ class _RecordingTabState extends State<_RecordingTab> {
       }
 
       final path = await _recorder.stop();
-      _timer?.cancel();
-      
+      _timer?.cancel();      
       String? permanentPath;
       if (path != null) {
         // Save permanently
@@ -324,25 +337,29 @@ class _RecordingTabState extends State<_RecordingTab> {
         permanentPath = await _storageService.saveRecordingToPhone(path, filename);
         
         if (permanentPath != null && mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Recording successfully saved to device storage')),
-           );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppStrings.of(context).recordingSavedToDevice)),
+          );
         } else if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Could not save recording permanently. Please check permissions.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange),
-           );
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(AppStrings.of(context).couldNotSaveRecording,
+                  style: const TextStyle(color: Colors.white)),
+              backgroundColor: Colors.orange,
+            ),
+          );
         }
       }
-      
+
       Duration? duration;
       final activePath = permanentPath ?? path;
       if (activePath != null) {
-         try {
-           await _audioPlayer.setSource(DeviceFileSource(activePath));
-           duration = await _audioPlayer.getDuration();
-         } catch (e) { 
-           // debugPrint('Error loading audio: $e'); 
-         }
+        try {
+          await _audioPlayer.setSource(DeviceFileSource(activePath));
+          duration = await _audioPlayer.getDuration();
+        } catch (e) {
+          // ignore audio load error
+        }
       }
 
       setState(() {
@@ -382,7 +399,7 @@ class _RecordingTabState extends State<_RecordingTab> {
         
         if (permanentPath != null && mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(content: Text('Imported audio securely copied to device storage')),
+             SnackBar(content: Text(AppStrings.of(context).importedAudioCopied)),
            );
         }
 
@@ -448,14 +465,14 @@ class _RecordingTabState extends State<_RecordingTab> {
 
       AppToast.show(
         context,
-        message: '📱 Lesson saved. Open it in My Lessons to analyse later.',
+        message: AppStrings.of(context).lessonSaved,
         type: ToastType.info,
         duration: const Duration(seconds: 4),
       );
     } catch (e) {
       if (mounted) {
         setState(() { _savingLater = false; _isProcessing = false; });
-        AppToast.show(context, message: 'Failed to save: $e', type: ToastType.error);
+        AppToast.show(context, message: '${AppStrings.of(context).failedToSave}: $e', type: ToastType.error);
       }
     }
   }
@@ -474,19 +491,16 @@ class _RecordingTabState extends State<_RecordingTab> {
       final saveLater = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('No internet connection'),
-          content: const Text(
-            'You need internet to run the analysis.\n\n'
-            'Would you like to save this lesson locally and analyse it later?',
-          ),
+          title: Text(AppStrings.of(context).noInternetTitle),
+          content: Text(AppStrings.of(context).noInternetAnalysis),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Cancel'),
+              child: Text(AppStrings.of(context).cancel),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Save for Later'),
+              child: Text(AppStrings.of(context).saveForLater),
             ),
           ],
         ),
@@ -533,7 +547,7 @@ class _RecordingTabState extends State<_RecordingTab> {
 
       AppToast.show(
         context,
-        message: 'Uploading for analysis. Check My Lessons for progress.',
+        message: AppStrings.of(context).uploadingForAnalysis,
         type: ToastType.success,
         duration: const Duration(seconds: 4),
       );
@@ -544,7 +558,7 @@ class _RecordingTabState extends State<_RecordingTab> {
     } catch (e) {
       if (mounted) {
         setState(() { _savingNow = false; _isProcessing = false; });
-        AppToast.show(context, message: 'Failed to save lesson: $e', type: ToastType.error);
+        AppToast.show(context, message: '${AppStrings.of(context).failedToSaveLesson}: $e', type: ToastType.error);
       }
     }
   }
@@ -588,13 +602,13 @@ class _RecordingTabState extends State<_RecordingTab> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Discard recording?'),
-        content: const Text('The current recording will be lost.'),
+        title: Text(AppStrings.of(context).discardRecording),
+        content: Text(AppStrings.of(context).discardRecordingMessage),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Keep')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(AppStrings.of(context).keep)),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Discard', style: TextStyle(color: AppTheme.errorColor)),
+            child: Text(AppStrings.of(context).discard, style: const TextStyle(color: AppTheme.errorColor)),
           ),
         ],
       ),
@@ -653,13 +667,13 @@ class _RecordingTabState extends State<_RecordingTab> {
                 const SizedBox(height: 32),
 
                 Text(
-                  'Uploading your lesson…',
+                  AppStrings.of(context).uploadingLesson,
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: textColor),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'AI analysis is starting. This may take a moment — please keep the app open.',
+                  AppStrings.of(context).uploadingSubtitle,
                   style: TextStyle(fontSize: 15, color: subColor, height: 1.6),
                   textAlign: TextAlign.center,
                 ),
@@ -760,7 +774,7 @@ class _RecordingTabState extends State<_RecordingTab> {
             const SizedBox(height: 36),
 
             Text(
-              'Tap to start recording',
+              AppStrings.of(context).tapToRecord,
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w700,
@@ -772,7 +786,7 @@ class _RecordingTabState extends State<_RecordingTab> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 48),
               child: Text(
-                'Record your lesson and get AI-powered feedback',
+                AppStrings.of(context).tapToRecordSub,
                 style: TextStyle(fontSize: 16, color: subColor, height: 1.5),
                 textAlign: TextAlign.center,
               ),
@@ -869,7 +883,7 @@ class _RecordingTabState extends State<_RecordingTab> {
                                 color: Theme.of(context).primaryColor),
                             const SizedBox(width: 6),
                             Text(
-                              'Screen locked',
+                              AppStrings.of(context).screenLocked,
                               style: TextStyle(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -912,7 +926,9 @@ class _RecordingTabState extends State<_RecordingTab> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        _isPaused ? 'PAUSED' : 'RECORDING',
+                        _isPaused
+                            ? AppStrings.of(context).recordingPaused.toUpperCase()
+                            : AppStrings.of(context).recording.toUpperCase(),
                         style: TextStyle(
                           color: _isPaused ? Colors.amber : AppTheme.errorColor,
                           fontWeight: FontWeight.bold,
@@ -1008,7 +1024,9 @@ class _RecordingTabState extends State<_RecordingTab> {
                         ),
                         const SizedBox(width: 10),
                         Text(
-                          _isLocked ? 'Locked — tap to unlock' : 'Lock screen',
+                          _isLocked
+                              ? AppStrings.of(context).unlockTooltip
+                              : AppStrings.of(context).lockTooltip,
                           style: TextStyle(
                             fontSize: 15,
                             color: _isLocked ? Theme.of(context).primaryColor : (isDark ? Colors.white70 : AppTheme.textSub),
@@ -1044,7 +1062,7 @@ class _RecordingTabState extends State<_RecordingTab> {
             children: [
               const SizedBox(height: 8),
               Text(
-                'Review Lesson',
+                AppStrings.of(context).reviewRecording,
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isDark ? Colors.white : AppTheme.textMain,
@@ -1052,7 +1070,7 @@ class _RecordingTabState extends State<_RecordingTab> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Fill in the details before analyzing',
+                AppStrings.of(context).uploadingSubtitle,
                 style: TextStyle(color: isDark ? Colors.grey[400] : AppTheme.textSub),
               ),
               const SizedBox(height: 24),
@@ -1143,9 +1161,9 @@ class _RecordingTabState extends State<_RecordingTab> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'SUBJECT',
-                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSub, letterSpacing: 0.5),
+                        Text(
+                          AppStrings.of(context).subject.toUpperCase(),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppTheme.textSub, letterSpacing: 0.5),
                         ),
                         const SizedBox(height: 6),
                         Container(
@@ -1160,7 +1178,13 @@ class _RecordingTabState extends State<_RecordingTab> {
                               value: _selectedSubject,
                               isExpanded: true,
                               dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                              items: _subjects.map((s) => DropdownMenuItem(value: s, child: Text(s, style: TextStyle(color: isDark ? Colors.white : AppTheme.textMain)))).toList(),
+                              items: _subjects.map((s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(
+                                  _getLocalizedSubject(context, s),
+                                  style: TextStyle(color: isDark ? Colors.white : AppTheme.textMain),
+                                ),
+                              )).toList(),
                               onChanged: (v) => setState(() => _selectedSubject = v!),
                             ),
                           ),
@@ -1231,7 +1255,7 @@ class _RecordingTabState extends State<_RecordingTab> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              'You\'re offline. Use "Save for Later" — you can run analysis when you reconnect.',
+                              AppStrings.of(context).offlineMessage,
                               style: TextStyle(fontSize: 13, color: Colors.orange.shade900, height: 1.4),
                             ),
                           ),
@@ -1309,7 +1333,7 @@ class _RecordingTabState extends State<_RecordingTab> {
               Center(
                 child: TextButton(
                   onPressed: _confirmDiscard,
-                  child: const Text('Discard', style: TextStyle(color: AppTheme.errorColor)),
+                  child: Text(AppStrings.of(context).discard, style: const TextStyle(color: AppTheme.errorColor)),
                 ),
               ),
               const SizedBox(height: 16),

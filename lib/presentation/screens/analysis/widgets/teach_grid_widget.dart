@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../data/models/analysis.dart';
+import '../../../../core/l10n/app_strings.dart';
 
 class TeachGridWidget extends StatelessWidget {
   final Analysis analysis;
@@ -65,7 +66,7 @@ class TeachGridWidget extends StatelessWidget {
       children: [
         _buildCollapsibleDomain(
           context,
-          'Classroom Culture',
+          AppStrings.of(context).domainClassroomCulture,
           [
             _createData('Supportive Learning Environment', analysis.supportiveEnvironment, Icons.spa, const Color(0xFF14B8A5), const Color(0xFFE8F5F3)),
             _createData('Positive Behavioral Expectations', analysis.positiveExpectations, Icons.psychology_alt, const Color(0xFF4CAF50), const Color(0xFFE8F5E9)),
@@ -74,7 +75,7 @@ class TeachGridWidget extends StatelessWidget {
         const SizedBox(height: 16),
         _buildCollapsibleDomain(
           context,
-          'Instruction',
+          AppStrings.of(context).domainInstruction,
           [
             _createData('Lesson Facilitation', analysis.lessonFacilitation, Icons.record_voice_over, const Color(0xFF2196F3), const Color(0xFFE3F2FD)),
             _createData('Checks for Understanding', analysis.checksUnderstanding, Icons.quiz, const Color(0xFFFF9800), const Color(0xFFFFF3E0)),
@@ -85,7 +86,7 @@ class TeachGridWidget extends StatelessWidget {
         const SizedBox(height: 16),
         _buildCollapsibleDomain(
           context,
-          'Socioemotional Skills',
+          AppStrings.of(context).domainSocioemotionalSkills,
           [
             _createData('Autonomy', analysis.autonomy, Icons.accessibility_new, const Color(0xFFE91E63), const Color(0xFFFCE4EC)),
             _createData('Perseverance', analysis.perseverance, Icons.hiking, const Color(0xFF795548), const Color(0xFFEFEBE9)),
@@ -153,7 +154,7 @@ class TeachGridWidget extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Tap to view ${items.length} elements',
+                      AppStrings.of(context).tapToViewElements(items.length),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Colors.grey.shade600,
                         fontSize: 11,
@@ -176,7 +177,7 @@ class TeachGridWidget extends StatelessWidget {
                   children: [
                     const Icon(Icons.check_circle_outline, color: Colors.green, size: 16),
                     const SizedBox(width: 8),
-                    Text('PROS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700, fontSize: 12)),
+                    Text(AppStrings.of(context).pros, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green.shade700, fontSize: 12)),
                   ],
                 ),
               ),
@@ -192,7 +193,7 @@ class TeachGridWidget extends StatelessWidget {
                   children: [
                     const Icon(Icons.info_outline, color: Colors.orange, size: 16),
                     const SizedBox(width: 8),
-                    Text('CONS', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800, fontSize: 12)),
+                    Text(AppStrings.of(context).cons, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade800, fontSize: 12)),
                   ],
                 ),
               ),
@@ -208,7 +209,7 @@ class TeachGridWidget extends StatelessWidget {
                   children: [
                     Icon(Icons.remove_circle_outline, color: Colors.grey.shade400, size: 16),
                     const SizedBox(width: 8),
-                    Text('NOT OBSERVED', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600, fontSize: 12)),
+                    Text(AppStrings.of(context).notObservedSection, style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade600, fontSize: 12)),
                   ],
                 ),
               ),

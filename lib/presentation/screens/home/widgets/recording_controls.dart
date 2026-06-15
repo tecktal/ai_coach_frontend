@@ -21,50 +21,58 @@ class RecordingControls extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Pause/Resume Button
-        InkWell(
-          onTap: onPauseResume,
-          borderRadius: BorderRadius.circular(50),
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.grey.shade300, width: 2),
-            ),
-            child: Icon(
-              isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-              size: 40,
-              color: AppTheme.textMain,
+        Semantics(
+          button: true,
+          label: isPaused ? 'Resume recording' : 'Pause recording',
+          child: InkWell(
+            onTap: onPauseResume,
+            borderRadius: BorderRadius.circular(50),
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.grey.shade300, width: 2),
+              ),
+              child: Icon(
+                isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                size: 40,
+                color: AppTheme.textMain,
+              ),
             ),
           ),
         ),
         const SizedBox(width: 40),
         
         // Stop Button
-        InkWell(
-           onTap: isLocked ? null : onStop,
-           borderRadius: BorderRadius.circular(50),
-           child: Container(
-             width: 80,
-             height: 80,
-             decoration: BoxDecoration(
-               shape: BoxShape.circle,
-               color: isLocked ? Colors.grey.shade300 : const Color(0xFFEF4444), // Red
-               boxShadow: [
-                 if (!isLocked)
-                 BoxShadow(
-                   color: Colors.red.withValues(alpha: 0.3),
-                   blurRadius: 15,
-                   offset: const Offset(0, 8),
-                 ),
-               ],
+        Semantics(
+          button: true,
+          label: 'Stop recording',
+          child: InkWell(
+             onTap: isLocked ? null : onStop,
+             borderRadius: BorderRadius.circular(50),
+             child: Container(
+               width: 80,
+               height: 80,
+               decoration: BoxDecoration(
+                 shape: BoxShape.circle,
+                 color: isLocked ? Colors.grey.shade300 : const Color(0xFFEF4444), // Red
+                 boxShadow: [
+                   if (!isLocked)
+                   BoxShadow(
+                     color: Colors.red.withValues(alpha: 0.3),
+                     blurRadius: 15,
+                     offset: const Offset(0, 8),
+                   ),
+                 ],
+               ),
+               child: const Icon(
+                 Icons.stop_rounded,
+                 size: 40,
+                 color: Colors.white,
+               ),
              ),
-             child: const Icon(
-               Icons.stop_rounded,
-               size: 40,
-               color: Colors.white,
-             ),
-           ),
+          ),
         ),
       ],
     );
